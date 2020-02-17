@@ -15,6 +15,7 @@ import getpass
 import requests
 import six
 import dateutil
+import uuid
 
 #Application-specific imports
 from . import exceptions as RH_exception
@@ -43,6 +44,7 @@ class Robinhood:
     headers = None
     auth_token = None
     refresh_token = None
+    current_device_token = None
 
     logger = logging.getLogger('Robinhood')
     logger.addHandler(logging.NullHandler())
@@ -62,7 +64,7 @@ class Robinhood:
             "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "en;q=1, fr;q=0.9, de;q=0.8, ja;q=0.7, nl;q=0.6, it;q=0.5",
             "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-            "X-Robinhood-API-Version": "1.0.0",
+            "X-Robinhood-API-Version": "1.265.0",
             "Connection": "keep-alive",
             "User-Agent": "Robinhood/823 (iPhone; iOS 7.1.2; Scale/2.00)"
         }
@@ -86,10 +88,7 @@ class Robinhood:
         return self.login(username=username, password=password)
 
 
-    def login(self,
-              username,
-              password,
-              mfa_code=None):
+    def login(self, username, password, mfa_code=None, device_token=None):
         """Save and test login info for Robinhood accounts
 
         Args:
@@ -102,25 +101,61 @@ class Robinhood:
         """
 
         self.username = username
-        payload = {
-            'password': password,
-            'username': self.username,
-            'grant_type': 'password',
-            'client_id': self.client_id
-        }
+        self.password = password
+
+        if not device_token:
+            if self.current_device_token:
+                device_token = self.current_device_token
+            else:
+                device_token = uuid.uuid1()
+                self.current_device_token = device_token
+
+        if mfa_code:
+            payload = {
+                'client_id': self.client_id,
+                "scope": "internal",
+                'access_token': self.auth_token,
+                'mfa_code': mfa_code,
+
+                'username': self.username,
+                'password': password,
+                'grant_type': 'password',
+
+                'expires_in': 603995,
+                'device_token': device_token.hex,
+
+                "token_type": "Bearer",
+            }
+        else:
+            payload = {
+                'client_id': self.client_id,
+                "scope": "internal",
+                'expires_in': 86400,
+                "device_token": device_token.hex,
+
+                'username': self.username,
+                'password': password,
+                'grant_type': 'password',
+
+                "token_type": "Bearer",
+                'challenge_type': 'sms',
+            }
 
         if mfa_code:
             payload['mfa_code'] = mfa_code
         try:
+            print(payload)
             res = self.session.post(endpoints.login(), data=payload, timeout=15)
+            print(res.json())
             res.raise_for_status()
             data = res.json()
+
         except requests.exceptions.HTTPError:
             raise RH_exception.LoginFailed()
 
         if 'mfa_required' in data.keys():           # pragma: no cover
             mfa_code = input("MFA: ")
-            return self.login(username,password,mfa_code)
+            return self.login(username,password,mfa_code, device_token)
 
         if 'access_token' in data.keys() and 'refresh_token' in data.keys():
             self.auth_token = data['access_token']
