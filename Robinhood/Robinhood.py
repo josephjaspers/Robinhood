@@ -16,6 +16,7 @@ import requests
 import six
 import dateutil
 import uuid
+import pickle
 
 #Application-specific imports
 from . import exceptions as RH_exception
@@ -141,12 +142,26 @@ class Robinhood:
                 'challenge_type': 'sms',
             }
 
+            if len(self.session.cookies.keys()):
+                payload = {
+                    'client_id': self.client_id,
+                    "scope": "internal",
+                    'access_token': self.auth_token,
+
+                    'username': self.username,
+                    'password': password,
+                    'grant_type': 'password',
+
+                    'expires_in': 603995,
+                    'device_token': device_token.hex,
+
+                    "token_type": "Bearer",
+                }
+
         if mfa_code:
             payload['mfa_code'] = mfa_code
         try:
-            print(payload)
             res = self.session.post(endpoints.login(), data=payload, timeout=15)
-            print(res.json())
             res.raise_for_status()
             data = res.json()
 
@@ -155,7 +170,7 @@ class Robinhood:
 
         if 'mfa_required' in data.keys():           # pragma: no cover
             mfa_code = input("MFA: ")
-            return self.login(username,password,mfa_code, device_token)
+            return self.login(username, password, mfa_code, device_token)
 
         if 'access_token' in data.keys() and 'refresh_token' in data.keys():
             self.auth_token = data['access_token']
@@ -189,6 +204,17 @@ class Robinhood:
 
         return req
 
+
+    def auth_session(self, username, password):
+        self.session.auth = (username, password)
+
+    def save_session(self, session_name):
+        with open(session_name + '.rb', 'wb') as file:
+            pickle.dump(self.session.cookies, file)
+
+    def load_session(self, session_name):
+        with open(session_name + '.rb', 'rb') as file:
+            self.session.cookies.update(pickle.load(file))
 
     ###########################################################################
     #                               GET DATA
