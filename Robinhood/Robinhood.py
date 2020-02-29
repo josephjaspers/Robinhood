@@ -133,24 +133,6 @@ class Robinhood:
                 'challenge_type': 'sms',
             }
 
-            if len(self.session.cookies.keys()):
-                verify = False
-                payload = {
-                    'client_id': self.client_id,
-                    "scope": "internal",
-                    'access_token': self.auth_token,
-
-                    'username': self.username,
-                    'password': password,
-                    'grant_type': 'password',
-
-                    'expires_in': 603995,
-                    'device_token': device_token.hex,
-
-                    "token_type": "Bearer",
-                }
-
-        res = None
         if mfa_code:
             payload['mfa_code'] = mfa_code
         try:
@@ -196,46 +178,6 @@ class Robinhood:
         self.auth_token = None
 
         return req
-
-    def fast_login(self, username, password):
-        """Save and test login info for Robinhood accounts
-
-        Args:
-            username (str): username
-            password (str): password
-
-        Returns:
-            (bool): received valid auth token
-
-        """
-        verify = True
-        self._set_userpass(username, password)
-
-        device_token = self.current_device_token or uuid.uuid1()
-
-        payload = {
-            'client_id': self.client_id,
-            "scope": "internal",
-            'access_token': self.auth_token,
-
-            'username': self.username,
-            'password': password,
-            'grant_type': 'password',
-
-            'expires_in': 603995,
-            'device_token': device_token.hex,
-            "token_type": "Bearer",
-        }
-
-
-        try:
-            res = self.session.post(endpoints.login(), data=payload, timeout=15, verify=verify)
-            res.raise_for_status()
-            data = res.json()
-            self.history.append(res)
-
-        except requests.exceptions.HTTPError:
-            raise RH_exception.LoginFailed()
 
     ###########################################################################
     #                        SAVING AND LOADING SESSIONS
@@ -332,8 +274,7 @@ class Robinhood:
             req = self.session.get(url, timeout=15)
             req.raise_for_status()
             data = req.json()
-        except requests.exceptions.HTTPError as e:
-            print(e)
+        except requests.exceptions.HTTPError:
             raise RH_exception.InvalidTickerSymbol()
 
 
