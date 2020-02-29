@@ -1,7 +1,5 @@
 """Robinhood.py: a collection of utilities for working with Robinhood's Private API """
 
-#Standard libraries
-import logging
 import warnings
 
 from enum import Enum
@@ -13,7 +11,6 @@ from six.moves import input
 
 import getpass
 import requests
-import six
 import dateutil
 import uuid
 import pickle
@@ -38,7 +35,6 @@ class Transaction(Enum):
 
 class Robinhood:
     """Wrapper class for fetching/parsing Robinhood endpoints """
-
     session = None
     username = None
     password = None
@@ -47,11 +43,7 @@ class Robinhood:
     refresh_token = None
     current_device_token = None
 
-    logger = logging.getLogger('Robinhood')
-    logger.addHandler(logging.NullHandler())
-
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
-
 
     ###########################################################################
     #                       Logging in and initializing
@@ -71,6 +63,7 @@ class Robinhood:
         }
         self.session.headers = self.headers
         self.auth_method = self.login_prompt
+        self.history = []
 
     def login_required(function):  # pylint: disable=E0213
         """ Decorator function that prompts user for login if they are not logged in already. Can be applied to any function using the @ notation. """
@@ -88,7 +81,6 @@ class Robinhood:
 
         return self.login(username=username, password=password)
 
-
     def login(self, username, password, mfa_code=None, device_token=None):
         """Save and test login info for Robinhood accounts
 
@@ -100,9 +92,8 @@ class Robinhood:
             (bool): received valid auth token
 
         """
-
-        self.username = username
-        self.password = password
+        verify = True
+        self._set_userpass(username, password)
 
         if not device_token:
             if self.current_device_token:
@@ -143,6 +134,7 @@ class Robinhood:
             }
 
             if len(self.session.cookies.keys()):
+                verify = False
                 payload = {
                     'client_id': self.client_id,
                     "scope": "internal",
@@ -158,12 +150,14 @@ class Robinhood:
                     "token_type": "Bearer",
                 }
 
+        res = None
         if mfa_code:
             payload['mfa_code'] = mfa_code
         try:
-            res = self.session.post(endpoints.login(), data=payload, timeout=15)
+            res = self.session.post(endpoints.login(), data=payload, timeout=15, verify=verify)
             res.raise_for_status()
             data = res.json()
+            self.history.append(res)
 
         except requests.exceptions.HTTPError:
             raise RH_exception.LoginFailed()
@@ -176,10 +170,9 @@ class Robinhood:
             self.auth_token = data['access_token']
             self.refresh_token = data['refresh_token']
             self.headers['Authorization'] = 'Bearer ' + self.auth_token
-            return True
+            return res
 
         return False
-
 
     def logout(self):
         """Logout from Robinhood
@@ -204,17 +197,62 @@ class Robinhood:
 
         return req
 
+    def fast_login(self, username, password):
+        """Save and test login info for Robinhood accounts
 
-    def auth_session(self, username, password):
-        self.session.auth = (username, password)
+        Args:
+            username (str): username
+            password (str): password
+
+        Returns:
+            (bool): received valid auth token
+
+        """
+        verify = True
+        self._set_userpass(username, password)
+
+        device_token = self.current_device_token or uuid.uuid1()
+
+        payload = {
+            'client_id': self.client_id,
+            "scope": "internal",
+            'access_token': self.auth_token,
+
+            'username': self.username,
+            'password': password,
+            'grant_type': 'password',
+
+            'expires_in': 603995,
+            'device_token': device_token.hex,
+            "token_type": "Bearer",
+        }
+
+
+        try:
+            res = self.session.post(endpoints.login(), data=payload, timeout=15, verify=verify)
+            res.raise_for_status()
+            data = res.json()
+            self.history.append(res)
+
+        except requests.exceptions.HTTPError:
+            raise RH_exception.LoginFailed()
+
+    ###########################################################################
+    #                        SAVING AND LOADING SESSIONS
+    ###########################################################################
+
+    def _set_userpass(self, username, password):
+        self.username = username
+        self.password = password
 
     def save_session(self, session_name):
         with open(session_name + '.rb', 'wb') as file:
-            pickle.dump(self.session.cookies, file)
+            pickle.dump(self, file)
 
-    def load_session(self, session_name):
+    @staticmethod
+    def load_session(session_name):
         with open(session_name + '.rb', 'rb') as file:
-            self.session.cookies.update(pickle.load(file))
+            return pickle.load(file)
 
     ###########################################################################
     #                               GET DATA
@@ -294,7 +332,8 @@ class Robinhood:
             req = self.session.get(url, timeout=15)
             req.raise_for_status()
             data = req.json()
-        except requests.exceptions.HTTPError:
+        except requests.exceptions.HTTPError as e:
+            print(e)
             raise RH_exception.InvalidTickerSymbol()
 
 
@@ -432,7 +471,7 @@ class Robinhood:
         data = self.get_quote_list(stock, 'symbol,last_trade_price')
         for item in data:
             quote_str = item[0] + ": $" + item[1]
-            self.logger.info(quote_str)
+            print(quote_str)
 
 
     def print_quotes(self, stocks):  # pragma: no cover
@@ -1423,9 +1462,7 @@ class Robinhood:
     #                          CANCEL ORDER
     ##############################
 
-    def cancel_order(
-            self,
-            order_id):
+    def cancel_order(self, order_id):
         """
         Cancels specified order and returns the response (results from `orders` command).
         If order cannot be cancelled, `None` is returned.
@@ -1439,8 +1476,7 @@ class Robinhood:
             try:
                 order = self.session.get(endpoints.orders() + order_id, timeout=15).json()
             except (requests.exceptions.HTTPError) as err_msg:
-                raise ValueError('Failed to get Order for ID: ' + order_id
-                    + '\n Error message: '+ repr(err_msg))
+                raise ValueError('Failed to get Order for ID: ' + order_id + '\n Error message: ' + repr(err_msg))
 
             if order.get('cancel') is not None:
                 try:
@@ -1448,8 +1484,7 @@ class Robinhood:
                     res.raise_for_status()
                     return res
                 except (requests.exceptions.HTTPError) as err_msg:
-                    raise ValueError('Failed to cancel order ID: ' + order_id
-                         + '\n Error message: '+ repr(err_msg))
+                    raise ValueError('Failed to cancel order ID: ' + order_id + '\n Error message: '+ repr(err_msg))
                     return None
 
         if isinstance(order_id, dict):
