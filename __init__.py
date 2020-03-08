@@ -1,1 +1,1 @@
-from Robinhood.Robinhood.Robinhood import Robinhood
+from . import Robinhood
