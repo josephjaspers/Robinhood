@@ -5,4 +5,3 @@ if six.PY3:
 else:
     from .Robinhood import Robinhood
     import exceptions as RH_exception
- q
