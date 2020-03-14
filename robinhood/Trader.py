@@ -4,7 +4,6 @@ from six.moves import input
 
 import getpass
 import requests
-import dateutil
 import uuid
 import pickle
 
@@ -222,34 +221,16 @@ class Trader:
         res = self.session.get(historicals, timeout=15)
         return res.json()['results'][0]
 
-
+    @login_required
     def get_account(self):
-        """Fetch account information
-
-            Returns:
-                (:obj:`dict`): `accounts` endpoint payload
-        """
-
         res = self.session.get(endpoints.accounts(), timeout=15)
         res.raise_for_status()  # auth required
         res = res.json()
 
         return res['results'][0]
 
-
-    ###########################################################################
-    #                           GET FUNDAMENTALS
-    ###########################################################################
-
+    @login_required
     def fundamentals(self, stock):
-        """Find stock fundamentals data
-
-            Args:
-                (str): stock ticker
-
-            Returns:
-                (:obj:`dict`): contents of `fundamentals` endpoint
-        """
         try:
             url = str(endpoints.fundamentals(str(stock.upper())))
             req = self.session.get(url, timeout=15)
@@ -259,11 +240,7 @@ class Trader:
             raise RH_exception.InvalidTickerSymbol()
         return data
 
-
-    ###########################################################################
-    #                           PORTFOLIOS DATA
-    ###########################################################################
-
+    @login_required
     def portfolios(self):
         """Returns the user's portfolio data """
 
@@ -274,21 +251,11 @@ class Trader:
 
 
     @login_required
-    def order_history(self, orderId=None):
-        """Wrapper for portfolios
-            Optional Args: add an order ID to retrieve information about a single order.
-            Returns:
-                (:obj:`dict`): JSON dict from getting orders
-        """
-        return self.session.get(endpoints.orders(orderId), timeout=15).json()
+    def order_history(self):
+        return self.session.get(endpoints.orders(), timeout=15).json()
 
+    @login_required
     def dividends(self):
-        """Wrapper for portfolios
-
-            Returns:
-                (:obj: `dict`): JSON dict from getting dividends
-        """
-
         return self.session.get(endpoints.dividends(), timeout=15).json()
 
     ###########################################################################
