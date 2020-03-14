@@ -59,7 +59,7 @@ class Trader:
         self.auth_method = self.login_prompt
         self.history = []
 
-    @staticmethod
+
     def login_required(function):  # pylint: disable=E0213
         """ Decorator function that prompts user for login if they are not logged in already. Can be applied to any function using the @ notation. """
         def wrapper(self, *args, **kwargs):
