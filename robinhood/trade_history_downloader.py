@@ -2,7 +2,8 @@ import json
 import csv
 import shelve
 
-from Robinhood import Robinhood
+from ..robinhood import Trader
+
 
 def get_symbol_from_instrument_url(rb_client, url, db):
     instrument = {}
@@ -44,7 +45,7 @@ def get_all_history_orders(rb_client):
     return orders
 
 
-rb = Robinhood()
+rb = Trader()
 # !!!!!! change the username and passs, be careful when paste the code to public
 rb.login(username="name", password="pass")
 past_orders = get_all_history_orders(rb)
