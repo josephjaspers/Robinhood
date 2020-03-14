@@ -1,4 +1,4 @@
-"""Setup.py for Robinhood helper library"""
+"""Setup.py for robinhood helper library"""
 
 import sys
 from os import path, listdir
@@ -76,7 +76,7 @@ class PyTest(TestCommand):
         TestCommand.initialize_options(self)
         self.pytest_args = [
             'Tests',
-            '--cov=Robinhood/',
+            '--cov=robinhood/',
             '--cov-report=term-missing'
         ]    #load defaults here
 
@@ -93,7 +93,7 @@ class PyTest(TestCommand):
         exit(errno)
 
 setup(
-    name='Robinhood',
+    name='robinhood',
     author='Jamone Kelly',
     author_email='TODO',
     url='https://github.com/Jamonek/Robinhood',
@@ -104,7 +104,7 @@ setup(
         'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 2.7'
     ],
-    keywords='Robinhood trade API',
+    keywords='robinhood trade API',
     packages=find_packages(),
     data_files=[
         ('docs', include_all_subfiles('docs')),

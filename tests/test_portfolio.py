@@ -21,7 +21,7 @@ CONFIG = helpers.get_config(CONFIG_FILENAME)
 
 LOGIN_OK = False
 def test_login_happypath(config=CONFIG):
-    """try to log in to Robinhood"""
+    """try to log in to robinhood"""
     global LOGIN_OK
 
     if (not config.get('LOGIN', 'username')) or (not config.get('LOGIN', 'password')):

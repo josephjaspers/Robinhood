@@ -44,7 +44,7 @@ def fetch_REST_directly(
         config (:obj:`configparser.ConfigParser`, optional): config for args
 
     Returns:
-        (:obj:`dict`) JSON-parsed data from Robinhood endpoint
+        (:obj:`dict`) JSON-parsed data from robinhood endpoint
 
     """
     rh_object = Robinhood()

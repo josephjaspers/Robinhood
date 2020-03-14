@@ -35,7 +35,7 @@ class TestQuoteHelpers:
     fake_ticker = CONFIG.get('FETCH', 'fake_ticker')
     rh_obj = Robinhood()
     def test_quote_endpoint(self, config=CONFIG):
-        """get raw data from Robinhood to test against"""
+        """get raw data from robinhood to test against"""
         global TEST_QUOTE
 
         TEST_QUOTE = helpers.fetch_REST_directly(
@@ -144,7 +144,7 @@ class TestFundamentalsHelpers:
     fake_ticker = CONFIG.get('FETCH', 'fake_ticker')
     rh_obj = Robinhood()
     def test_fundamental_endpoint(self, config=CONFIG):
-        """get raw data from Robinhood to test against"""
+        """get raw data from robinhood to test against"""
         global TEST_FUNDAMENTAL
 
         TEST_FUNDAMENTAL = helpers.fetch_REST_directly(

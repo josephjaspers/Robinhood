@@ -1,10 +1,7 @@
-"""Robinhood.py: a collection of utilities for working with Robinhood's Private API """
-
+"""robinhood.py: a collection of utilities for working with robinhood's Private API """
 import warnings
-
 from enum import Enum
 
-#External dependencies
 from six.moves.urllib.parse import unquote  # pylint: disable=E0401
 from six.moves.urllib.request import getproxies  # pylint: disable=E0401
 from six.moves import input
@@ -15,7 +12,6 @@ import dateutil
 import uuid
 import pickle
 
-#Application-specific imports
 from . import exceptions as RH_exception
 from . import endpoints
 
@@ -33,11 +29,9 @@ class Transaction(Enum):
     SELL = 'sell'
 
 
-class Robinhood:
-    """Wrapper class for fetching/parsing Robinhood endpoints """
+class Trader:
+    """Wrapper class for fetching/parsing robinhood endpoints """
     session = None
-    username = None
-    password = None
     headers = None
     auth_token = None
     refresh_token = None
@@ -57,15 +51,15 @@ class Robinhood:
             "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "en;q=1, fr;q=0.9, de;q=0.8, ja;q=0.7, nl;q=0.6, it;q=0.5",
             "Content-Type": "application/x-www-form-urlencoded; charset=utf-8",
-            "X-Robinhood-API-Version": "1.265.0",
+            "X-robinhood-API-Version": "1.265.0",
             "Connection": "keep-alive",
-            "User-Agent": "Robinhood/823 (iPhone; iOS 7.1.2; Scale/2.00)"
+            "User-Agent": "robinhood/823 (iPhone; iOS 7.1.2; Scale/2.00)"
         }
         self.session.headers = self.headers
         self.auth_method = self.login_prompt
         self.history = []
 
-    def login_required(function):  # pylint: disable=E0213
+    def login_required(self, function):  # pylint: disable=E0213
         """ Decorator function that prompts user for login if they are not logged in already. Can be applied to any function using the @ notation. """
         def wrapper(self, *args, **kwargs):
             if 'Authorization' not in self.headers:
@@ -82,7 +76,7 @@ class Robinhood:
         return self.login(username=username, password=password)
 
     def login(self, username, password, mfa_code=None, device_token=None):
-        """Save and test login info for Robinhood accounts
+        """Save and test login info for robinhood accounts
 
         Args:
             username (str): username
@@ -93,7 +87,6 @@ class Robinhood:
 
         """
         verify = True
-        self._set_userpass(username, password)
 
         if not device_token:
             if self.current_device_token:
@@ -109,7 +102,7 @@ class Robinhood:
                 'access_token': self.auth_token,
                 'mfa_code': mfa_code,
 
-                'username': self.username,
+                'username': username,
                 'password': password,
                 'grant_type': 'password',
 
@@ -125,7 +118,7 @@ class Robinhood:
                 'expires_in': 86400,
                 "device_token": device_token.hex,
 
-                'username': self.username,
+                'username': username,
                 'password': password,
                 'grant_type': 'password',
 
@@ -157,7 +150,7 @@ class Robinhood:
         return False
 
     def logout(self):
-        """Logout from Robinhood
+        """Logout from robinhood
 
         Returns:
             (:obj:`requests.request`) result from logout endpoint
@@ -183,10 +176,6 @@ class Robinhood:
     #                        SAVING AND LOADING SESSIONS
     ###########################################################################
 
-    def _set_userpass(self, username, password):
-        self.username = username
-        self.password = password
-
     def save_session(self, session_name):
         with open(session_name + '.rb', 'wb') as file:
             pickle.dump(self, file)
@@ -209,7 +198,6 @@ class Robinhood:
 
         return data
 
-
     def instruments(self, stock):
         """Fetch instruments endpoint
 
@@ -229,7 +217,6 @@ class Robinhood:
             return res
 
         return res['results']
-
 
     def instrument(self, id):
         """Fetch instrument info
@@ -251,7 +238,6 @@ class Robinhood:
 
         return data['results']
 
-
     def quote_data(self, stock=''):
         """Fetch stock quote
 
@@ -269,7 +255,7 @@ class Robinhood:
         else:
             url = str(endpoints.quotes()) + "?symbols=" + str(stock)
 
-        #Check for validity of symbol
+        # Check for validity of symbol
         try:
             req = self.session.get(url, timeout=15)
             req.raise_for_status()
@@ -277,13 +263,11 @@ class Robinhood:
         except requests.exceptions.HTTPError:
             raise RH_exception.InvalidTickerSymbol()
 
-
         return data
-
 
     # We will keep for compatibility until next major release
     def quotes_data(self, stocks):
-        """Fetch quote for multiple stocks, in one single Robinhood API call
+        """Fetch quote for multiple stocks, in one single robinhood API call
 
             Args:
                 stocks (list<str>): stock tickers
@@ -301,7 +285,6 @@ class Robinhood:
             data = req.json()
         except requests.exceptions.HTTPError:
             raise RH_exception.InvalidTickerSymbol()
-
 
         return data["results"]
 
@@ -919,7 +902,7 @@ class Robinhood:
                     trigger='immediate',
                     order='market',
                     time_in_force='gfd'):
-        """Place an order with Robinhood
+        """Place an order with robinhood
 
             Notes:
                 OMFG TEST THIS PLEASE!
@@ -1270,7 +1253,7 @@ class Robinhood:
                      stop_price=None,
                      quantity=None,
                      side=None):
-        """Submits order to Robinhood
+        """Submits order to robinhood
 
             Notes:
                 This is normally not called directly.  Most programs should use
