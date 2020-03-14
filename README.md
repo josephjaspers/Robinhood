@@ -2,8 +2,8 @@
 
 -------------------
 
-This is a fork of the original repository. Credits to Jamonek 
-for writing the original version
+This is a fork of the original repository. 
+Credits to Jamonek for writing the original version
 
 
 ------------------
