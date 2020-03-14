@@ -26,4 +26,4 @@ print(quote_info)
 buy_order = my_trader.place_buy_order(stock_instrument, 1)
 
 #Place a sell order
-sell_order = my_trader.place_sell_order(stock_instrument, 1)
+sell_order = my_trader._place_sell_order(stock_instrument, 1)
