@@ -191,10 +191,6 @@ class TestURLWrapper:
 
         TEST_URL_RESULT = req.json()
 
-    def test_get_url(self):
-        """fetch url with get_url"""
-        data = self.rh_obj.get_url(self.base_url)
-        assert data == TEST_URL_RESULT
 
 def test_get_news(config=CONFIG):
     """test `get_news` endpoint"""
