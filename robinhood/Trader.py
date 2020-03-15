@@ -41,7 +41,7 @@ class Trader:
         self.session.headers = self.headers
         self.history = []
 
-    def login_required(function):  # pylint: disable=E0213
+    def login_required(function):
         """ Decorator function that prompts user for login if they are not logged in already. Can be applied to any function using the @ notation. """
         def wrapper(self, *args, **kwargs):
             if 'Authorization' not in self.headers:
@@ -148,7 +148,6 @@ class Trader:
     #                               GET DATA
     ###########################################################################
 
-
     def instrument(self, symbol):
         """Fetch instrument info
 
@@ -168,7 +167,6 @@ class Trader:
             raise RH_exception.InvalidInstrumentId()
 
         return data['results']
-
 
     def get_quote(self, stock):
         """Fetch stock quote
@@ -190,7 +188,6 @@ class Trader:
             raise RH_exception.InvalidTickerSymbol()
 
         return data
-
 
     def get_historical_quotes(self, stock, interval, span, bounds=Bounds.REGULAR):
         """Fetch historical data for stock
@@ -263,14 +260,7 @@ class Trader:
     ###########################################################################
 
     def place_market_buy_order(self, symbol, quantity, time_in_force=None):
-        """Wrapper for placing market buy orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
-                instrument_URL (str): The RH URL of the instrument
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 quantity (int): Number of shares to buy
@@ -286,13 +276,7 @@ class Trader:
                                   quantity=quantity))
 
     def place_limit_buy_order(self, symbol, quantity, price, time_in_force=None):
-        """Wrapper for placing limit buy orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 price (float): The max price you're willing to pay per share
@@ -310,13 +294,7 @@ class Trader:
                                   quantity=quantity))
 
     def place_stop_loss_buy_order(self, symbol, quantity, price, time_in_force=None):
-        """Wrapper for placing stop loss buy orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 stop_price (float): The price at which this becomes a market order
@@ -333,19 +311,9 @@ class Trader:
                                   stop_price=price,
                                   quantity=quantity))
 
-    def place_stop_limit_buy_order(self,
-                                   symbol=None,
-                                   time_in_force=None,
-                                   stop_price=None,
-                                   price=None,
-                                   quantity=None):
-        """Wrapper for placing stop limit buy orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
+    def place_stop_limit_buy_order(
+            self, symbol, quantity, price, stop_price, time_in_force=None):
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 stop_price (float): The price at which this becomes a limit order
@@ -364,19 +332,8 @@ class Trader:
                                   price=price,
                                   quantity=quantity))
 
-    def place_market_sell_order(self,
-                                instrument_URL=None,
-                                symbol=None,
-                                time_in_force=None,
-                                quantity=None):
-        """Wrapper for placing market sell orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
-                instrument_URL (str): The RH URL of the instrument
+    def place_market_sell_order(self, symbol, quantity, time_in_force=None):
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 quantity (int): Number of shares to sell
@@ -392,19 +349,11 @@ class Trader:
                                   quantity=quantity))
 
     def place_limit_sell_order(self,
-                               instrument_URL=None,
                                symbol=None,
                                time_in_force=None,
                                price=None,
                                quantity=None):
-        """Wrapper for placing limit sell orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
-                instrument_URL (str): The RH URL of the instrument
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 price (float): The minimum price you're willing to get per share
@@ -426,14 +375,7 @@ class Trader:
                                    time_in_force=None,
                                    stop_price=None,
                                    quantity=None):
-        """Wrapper for placing stop loss sell orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
-                instrument_URL (str): The RH URL of the instrument
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 stop_price (float): The price at which this becomes a market order
@@ -450,20 +392,9 @@ class Trader:
                                   stop_price=stop_price,
                                   quantity=quantity))
 
-    def place_stop_limit_sell_order(self,
-                                    symbol=None,
-                                    time_in_force=None,
-                                    price=None,
-                                    stop_price=None,
-                                    quantity=None):
-        """Wrapper for placing stop limit sell orders
-
-            Notes:
-                If only one of the instrument_URL or symbol are passed as
-                arguments the other will be looked up automatically.
-
-            Args:
-                instrument_URL (str): The RH URL of the instrument
+    def place_stop_limit_sell_order(
+            self, symbol, quantity, price, stop_price, time_in_force=None):
+        """Args:
                 symbol (str): The ticker symbol of the instrument
                 time_in_force (str): 'GFD' or 'GTC' (day or until cancelled)
                 stop_price (float): The price at which this becomes a limit order
@@ -483,7 +414,7 @@ class Trader:
                                   quantity=quantity))
 
     def _submit_order(self,
-                      symbol=None,
+                      symbol,
                       order_type=None,
                       time_in_force=None,
                       trigger=None,
@@ -525,27 +456,26 @@ class Trader:
 
         # Start with some parameter checks. I'm paranoid about $.
         instrument_URL = None
-        if(symbol is None):
+        if symbol is None:
             raise(ValueError('Neither instrument_URL nor symbol were passed to submit_order'))
         for result in self.instruments(symbol):
             if result['symbol'].upper() == symbol.upper():
                 instrument_URL = result['url']
                 break
-        if(instrument_URL is None):
+        if instrument_URL is None:
             raise(ValueError('instrument_URL could not be defined. Symbol %s not found' % symbol))
 
-        if(symbol is None):
+        if symbol is None:
             symbol = self.session.get(instrument_URL, timeout=15).json()['symbol']
 
-        if(side is None):
+        if side is None:
             raise(ValueError('Order is neither buy nor sell in call to submit_order'))
 
-        if(order_type is None):
-            if(price is None):
-                if(stop_price is None):
-                    order_type = 'market'
-                else:
-                    order_type = 'limit'
+        if order_type is None and price is None:
+            if stop_price is None:
+                order_type = 'market'
+            else:
+                order_type = 'limit'
 
         symbol = str(symbol).upper()
         order_type = str(order_type).lower()
@@ -553,42 +483,42 @@ class Trader:
         trigger = str(trigger).lower()
         side = str(side).lower()
 
-        if(order_type != 'market') and (order_type != 'limit'):
+        if (order_type != 'market') and (order_type != 'limit'):
             raise(ValueError('Invalid order_type in call to submit_order'))
 
-        if(order_type == 'limit'):
-            if(price is None):
+        if order_type == 'limit':
+            if price is None:
                 raise(ValueError('Limit order has no price in call to submit_order'))
-            if(price <= 0):
+            if price <= 0:
                 raise(ValueError('Price must be positive number in call to submit_order'))
 
-        if(trigger == 'stop'):
-            if(stop_price is None):
+        if trigger == 'stop':
+            if stop_price is None:
                 raise(ValueError('Stop order has no stop_price in call to submit_order'))
-            if(stop_price <= 0):
+            if stop_price <= 0:
                 raise(ValueError('Stop_price must be positive number in call to submit_order'))
 
-        if(stop_price is not None):
-            if(trigger != 'stop'):
+        if stop_price is not None:
+            if trigger != 'stop':
                 raise(ValueError('Stop price set for non-stop order in call to submit_order'))
 
-        if(price is None):
-            if(order_type == 'limit'):
+        if price is None:
+            if order_type == 'limit':
                 raise(ValueError('Limit order has no price in call to submit_order'))
 
-        if(price is not None):
-            if(order_type.lower() == 'market'):
+        if price is not None:
+            if order_type.lower() == 'market':
                 raise(ValueError('Market order has price limit in call to submit_order'))
             price = float(price)
         else:
             price = current_bid_price # default to current bid price
 
-        if(quantity is None):
+        if quantity is None:
             raise(ValueError('No quantity specified in call to submit_order'))
 
         quantity = int(quantity)
 
-        if(quantity <= 0):
+        if quantity <= 0:
             raise(ValueError('Quantity must be positive number in call to submit_order'))
 
         payload = {}
@@ -609,15 +539,10 @@ class Trader:
                 payload[field] = value
 
         print(payload)
-
         res = self.session.post(endpoints.orders(), data=payload, timeout=15)
         res.raise_for_status()
 
         return res
-
-    ##############################
-    #                          CANCEL ORDER
-    ##############################
 
     def cancel_order(self, order_id):
         """
