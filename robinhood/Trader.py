@@ -282,34 +282,18 @@ class Trader:
             time_in_force)
 
     def _place_order_detail(
-            self,
-            instrument,
-            quantity,
-            price,
-            stop_price,
-            side,
-            time_in_force=None):
-        """Place an order with Robinhood
-            Args:
-                instrument (dict): the RH URL and symbol in dict for the instrument to
-                    be traded
-                quantity (int): quantity of stocks in order
-                bid_price (float): price for order
-                transaction (:enum:`Transaction`): BUY or SELL enum
-                trigger: 'immediate' or 'stop'
-                order: 'market' or 'limit'
-                time_in_force 'gfd' or 'gtc'
-            Returns:
-                (:obj:`requests.request`): result from `orders` put command
-        """
+            self, instrument, quantity, price, stop_price, side, time_in_force):
+
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
-        time_in_force = time_in_force if time_in_force else 'gfd'
-        assert(side in ['buy', 'sell'])
+
+        if not time_in_force: time_in_force = 'gfd'
         if not price: price = self.quote(instrument["symbol"])["bid_price"]
         if not price: price = self.quote(instrument["symbol"])["last_trade_price"]
         if price is not None: price = float(price)
         if stop_price is not None: price = float(price)
+        assert(side in ['buy', 'sell'])
+        assert(time_in_force in ['gfd', 'gtc'])
 
         payload = {
             "account": self.account()["url"],
