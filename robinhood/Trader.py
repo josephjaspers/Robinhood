@@ -7,7 +7,6 @@ import requests
 import uuid
 import pickle
 
-from . import exceptions as RH_exception
 from . import endpoints
 from .enums import Transaction, Bounds
 
@@ -40,14 +39,6 @@ class Trader:
         }
         self.session.headers = self.headers
         self.history = []
-
-    def login_required(function):
-        """ Decorator function that prompts user for login if they are not logged in already. Can be applied to any function using the @ notation. """
-        def wrapper(self, *args, **kwargs):
-            if 'Authorization' not in self.headers:
-                self.auth_method()
-            return function(self, *args, **kwargs)  # pylint: disable=E1102
-        return wrapper
 
     def login(self, username=None, password=None, mfa_code=None, device_token=None):
         """Save and test login info for robinhood accounts
@@ -94,7 +85,7 @@ class Trader:
             data = res.json()
             self.history.append(res)
         except requests.exceptions.HTTPError:
-            raise RH_exception.LoginFailed()
+            raise Exception("login error")
 
         if 'mfa_required' in data.keys():
             mfa_code = input("MFA: ")
@@ -131,6 +122,21 @@ class Trader:
 
         return req
 
+    def is_logged_in(self):
+        return "Authorization" in self.headers
+
+    def _assert_logged_in(self):
+        if not self.is_logged_in():
+            raise Exception("Login required for caller")
+
+    def _req_get(self, *args, timeout=15, **kwargs):
+        res = self.session.get(*args, timeout=timeout, **kwargs)
+        res.raise_for_status()
+        return res
+
+    def _req_get_json(self, *args, timeout=15, **kwargs):
+        return self._req_get(*args, timeout=timeout, **kwargs).json()
+
     ###########################################################################
     #                        SAVING AND LOADING SESSIONS
     ###########################################################################
@@ -158,38 +164,22 @@ class Trader:
                 (:obj:`dict`): JSON dict of instrument
         """
         url = str(endpoints.instruments()) + "?symbol=" + str(symbol)
+        return self._req_get_json(url)['results'][0]
 
-        try:
-            req = requests.get(url, timeout=15)
-            req.raise_for_status()
-            data = req.json()
-        except requests.exceptions.HTTPError:
-            raise RH_exception.InvalidInstrumentId()
-
-        return data['results']
-
-    def get_quote(self, stock):
+    def quote(self, stock):
         """Fetch stock quote
 
             Args:
-                stock (str): stock ticker, prompt if blank
+                stock (str): stock ticker
 
             Returns:
                 (:obj:`dict`): JSON contents from `quotes` endpoint
         """
         stock = stock if isinstance(stock, list) else [stock]
         url = str(endpoints.quotes()) + "?symbols=" + ",".join(stock)
+        return self._req_get(url).json()
 
-        try:
-            req = self.session.get(url, timeout=15)
-            req.raise_for_status()
-            data = req.json()
-        except requests.exceptions.HTTPError:
-            raise RH_exception.InvalidTickerSymbol()
-
-        return data
-
-    def get_historical_quotes(self, stock, interval, span, bounds=Bounds.REGULAR):
+    def historical_quotes(self, stock, interval, span, bounds=Bounds.REGULAR):
         """Fetch historical data for stock
 
             Note: valid interval/span configs
@@ -207,53 +197,35 @@ class Trader:
             Returns:
                 (:obj:`dict`) values returned from `historicals` endpoint
         """
-        if type(stock) is str:
-            stock = [stock]
+        stock = stock if isinstance(stock, list) else [stock]
+        bounds = Bounds(bounds) if isinstance(bounds, str) else bounds
 
-        if isinstance(bounds, str):  # recast to Enum
-            bounds = Bounds(bounds)
+        url = endpoints.historicals()
+        params = {
+            'symbols': ','.join(stock).upper(),
+            'interval': interval,
+            'span': span,
+            'bounds': bounds.name.lower()
+        }
+        url += '?' + '&'.join([f'{k}={v}' for k,v in params.items() if v])
+        return self._req_get_json(url)['results'][0]
 
-        historicals = endpoints.historicals() + "/?symbols=" + ','.join(stock).upper() + "&interval=" + interval + "&span=" + span + "&bounds=" + bounds.name.lower()
+    def account(self):
+        self._assert_logged_in()
+        return self._req_get_json(endpoints.accounts())['result'][0]
 
-        res = self.session.get(historicals, timeout=15)
-        return res.json()['results'][0]
-
-    @login_required
-    def get_account(self):
-        res = self.session.get(endpoints.accounts(), timeout=15)
-        res.raise_for_status()  # auth required
-        res = res.json()
-
-        return res['results'][0]
-
-    @login_required
     def fundamentals(self, stock):
-        try:
-            url = str(endpoints.fundamentals(str(stock.upper())))
-            req = self.session.get(url, timeout=15)
-            req.raise_for_status()
-            data = req.json()
-        except requests.exceptions.HTTPError:
-            raise RH_exception.InvalidTickerSymbol()
-        return data
+        return self._req_get_json(endpoints.fundamentals(stock.upper()))
 
-    @login_required
     def portfolios(self):
         """Returns the user's portfolio data """
+        return self._req_get_json(endpoints.portfolios())['results'][0]
 
-        req = self.session.get(endpoints.portfolios(), timeout=15)
-        req.raise_for_status()
-
-        return req.json()['results'][0]
-
-
-    @login_required
     def order_history(self):
-        return self.session.get(endpoints.orders(), timeout=15).json()
+        return self._req_get_json(endpoints.orders())
 
-    @login_required
     def dividends(self):
-        return self.session.get(endpoints.dividends(), timeout=15).json()
+        return self._req_get_json(endpoints.orders())
 
     ###########################################################################
     #                               PLACE ORDER
@@ -448,17 +420,17 @@ class Trader:
             Returns:
                 (:obj:`requests.request`): result from `orders` put command
         """
-
+        self._assert_logged_in()
         # Used for default price input
         # Price is required, so we use the current bid price if it is not specified
-        current_quote = self.get_quote(symbol)
+        current_quote = self.quote(symbol)
         current_bid_price = current_quote['bid_price']
 
         # Start with some parameter checks. I'm paranoid about $.
         instrument_URL = None
         if symbol is None:
             raise(ValueError('Neither instrument_URL nor symbol were passed to submit_order'))
-        for result in self.instruments(symbol):
+        for result in self.instrument(symbol):
             if result['symbol'].upper() == symbol.upper():
                 instrument_URL = result['url']
                 break

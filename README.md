@@ -4,7 +4,16 @@
 
 This is a fork of the original repository. 
 Credits to Jamonek for writing the original version
+This version contains SIGNIFICANT changes to the original version
 
+
+Changelist: 
+
+1) Removed a large number of features that were either poorly tested, not useful, or duplicates of existing functionality
+2) Refactored a large amount of the code for better use,
+3) Removed all prompting related methods (except for login)
+4) Removed default 'None' parameters that would cause an exception if not supplied 
+       IE (methods like 'buy_market_order' would have quantity marked as optional)   
 
 ------------------
 
@@ -29,19 +38,14 @@ Clone the repository into your project directory using:
 Then navigate to the cloned directory, where `setup.py` is located. Now run the following to install:
 
     pip install .
-    
-### Converting to Python 3
-Project will work on both python 2 and python 3
 
 ### How to Use (see [example.py](https://github.com/Jamonek/Robinhood/blob/master/docs/example.py))
 
     from Robinhood import Robinhood
     my_trader = Robinhood()
     logged_in = my_trader.login(username="USERNAME HERE", password="PASSWORD HERE")
-    stock_instrument = my_trader.instruments("GEVO")[0]
-    quote_info = my_trader.quote_data("GEVO")
-    buy_order = my_trader.place_buy_order(stock_instrument, 1)
-    sell_order = my_trader.place_sell_order(stock_instrument, 1)
+    stock_instrument = my_trader.instrument("GEVO")
+    buy_order = my_trader.place_market_buy_order('AAPL', 1)
 
 ### Data returned
 * Quote data

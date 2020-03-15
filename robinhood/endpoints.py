@@ -41,14 +41,14 @@ def edocuments():
     return api_url + "/documents/"
 
 
-def instruments(instrumentId=None, option=None):
+def instruments(instrument_id=None, option=None):
     '''
     Return information about a specific instrument by providing its instrument id.
     Add extra options for additional information such as "popularity"
     '''
     return api_url \
            + "/instruments/" \
-           + ("{id}/".format(id=instrumentId) if instrumentId else "") \
+           + ("{id}/".format(id=instrument_id) if instrument_id else "") \
            + ("{_option}/".format(_option=option) if option else "")
 
 
