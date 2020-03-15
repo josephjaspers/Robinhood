@@ -294,6 +294,10 @@ class Trader:
             func = self._place_order_detail
             instrument = self.instrument(symbol)
 
+        if not time_in_force: time_in_force = 'gfd'
+        assert(side in ['buy', 'sell'])
+        assert(time_in_force in ['gfd', 'gtc'])
+
         return func(
             instrument,
             quantity,
@@ -307,9 +311,6 @@ class Trader:
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
-        if not time_in_force: time_in_force = 'gfd'
-        assert(side in ['buy', 'sell'])
-        assert(time_in_force in ['gfd', 'gtc'])
 
         if not price: price = self.quote(instrument["symbol"])["bid_price"]
         if not price: price = self.quote(instrument["symbol"])["last_trade_price"]
@@ -336,13 +337,9 @@ class Trader:
 
     def _place_crypto_order_detail(
             self, crypto, quantity, price, stop_price, side, time_in_force):
-        if not time_in_force: time_in_force = 'gfd'
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
-        if not time_in_force: time_in_force = 'gfd'
-        assert(side in ['buy', 'sell'])
-        assert(time_in_force in ['gfd', 'gtc'])
 
         if price is None:
             crypto_quote_url = f'https://api.robinhood.com/marketdata/forex/quotes/{crypto}/'
