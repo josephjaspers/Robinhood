@@ -13,12 +13,6 @@ from six.moves.urllib.parse import unquote
 
 class Trader:
     """Wrapper class for fetching/parsing robinhood endpoints """
-    session = None
-    headers = None
-    auth_token = None
-    refresh_token = None
-    current_device_token = None
-
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
 
     ###########################################################################
@@ -26,9 +20,10 @@ class Trader:
     ###########################################################################
 
     def __init__(self):
+        self.auth_token = None
         self.session = requests.session()
         self.session.proxies = getproxies()
-        self.headers = {
+        self.session.headers = {
             "Accept": "*/*",
             "Accept-Encoding": "gzip, deflate",
             "Accept-Language": "en;q=1, fr;q=0.9, de;q=0.8, ja;q=0.7, nl;q=0.6, it;q=0.5",
@@ -37,7 +32,6 @@ class Trader:
             "Connection": "keep-alive",
             "User-Agent": "robinhood/823 (iPhone; iOS 7.1.2; Scale/2.00)"
         }
-        self.session.headers = self.headers
 
     def login(self, username=None, password=None, mfa_code=None, device_token=None):
         """Save and test login info for robinhood accounts
@@ -52,13 +46,7 @@ class Trader:
         """
         if not username: username = input("Username: ")
         if not password: password = getpass.getpass()
-
-        if not device_token:
-            if self.current_device_token:
-                device_token = self.current_device_token
-            else:
-                device_token = uuid.uuid1()
-                self.current_device_token = device_token
+        if not device_token: device_token = uuid.uuid1()
 
         payload = {
             'username': username,
@@ -69,7 +57,6 @@ class Trader:
             'expires_in': 603995,
             "scope": "internal",
             'client_id': self.client_id,
-
         }
 
         if mfa_code:
@@ -89,7 +76,7 @@ class Trader:
         if 'access_token' in data.keys() and 'refresh_token' in data.keys():
             self.auth_token = data['access_token']
             self.refresh_token = data['refresh_token']
-            self.headers['Authorization'] = 'Bearer ' + self.auth_token
+            self.session.headers['Authorization'] = 'Bearer ' + self.auth_token
             return res
 
         return False
@@ -112,13 +99,13 @@ class Trader:
         except requests.exceptions.HTTPError as err_msg:
             warnings.warn('Failed to log out ' + repr(err_msg))
 
-        self.headers['Authorization'] = None
+        self.session.headers['Authorization'] = None
         self.auth_token = None
 
         return req
 
     def is_logged_in(self):
-        return "Authorization" in self.headers
+        return "Authorization" in self.session.headers
 
     def _req_get(self, *args, timeout=15, **kwargs):
         res = self.session.get(*args, timeout=timeout, **kwargs)
@@ -381,9 +368,7 @@ class Trader:
                     try:
                         # sometimes Robinhood asks for another log in when placing an
                         # order
-                        res = self.session.post(
-                            order["cancel"], headers=self.headers, timeout=15
-                        )
+                        res = self.session.post(order["cancel"], timeout=15)
                         res.raise_for_status()
                         return res
                     except (requests.exceptions.HTTPError) as err_msg:
