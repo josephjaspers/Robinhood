@@ -15,6 +15,16 @@ class Trader:
     """Wrapper class for fetching/parsing robinhood endpoints """
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
 
+    _crypto_pairs = {
+        'BTCUSD': '3d961844-d360-45fc-989b-f6fca761d511',
+        'ETHUSD': '76637d50-c702-4ed1-bcb5-5b0732a81f48',
+        'ETCUSD': '7b577ce3-489d-4269-9408-796a0d1abb3a',
+        'BCHUSD': '2f2b77c4-e426-4271-ae49-18d5cb296d3a',
+        'BSVUSD': '086a8f9f-6c39-43fa-ac9f-57952f4a1ba6',
+        'LTCUSD': '383280b1-ff53-43fc-9c84-f01afd0989cd',
+        'DOGEUSD': '1ef78e1b-049b-4f12-90e5-555dcf2fe204'
+    }
+
     ###########################################################################
     #                       Logging in and initializing
     ###########################################################################
@@ -145,7 +155,12 @@ class Trader:
                 (:obj:`dict`): JSON dict of instrument
         """
         url = str(endpoints.instruments()) + "?symbol=" + str(symbol)
-        return self._req_get_json(url)['results'][0]
+        results = self._req_get_json(url)['results']
+
+        if not results:
+            raise Exception(f"Invalid symbol: {symbol}")
+        else:
+            return results[0]
 
     def quote(self, stock):
         """Fetch stock quote
@@ -210,7 +225,7 @@ class Trader:
     ###########################################################################
     #                               PLACE ORDER
     ###########################################################################
-    def place_buy_order(self,
+    def buy(self,
                         symbol,
                         quantity,
                         price=None,
@@ -234,7 +249,7 @@ class Trader:
                                 stop_price=stop_price,
                                 time_in_force=time_in_force)
 
-    def place_sell_order(
+    def sell(
             self, symbol, quantity, price, stop_price=None, time_in_force=None):
         """
         Args:
@@ -272,9 +287,15 @@ class Trader:
         Returns:
             Response object
         """
+        if symbol.upper() + 'USD' in self._crypto_pairs:
+            func = self._place_crypto_order_detail
+            instrument = symbol.upper() + 'USD'
+        else:
+            func = self._place_order_detail
+            instrument = self.instrument(symbol)
 
-        return self._place_order_detail(
-            self.instrument(symbol),
+        return func(
+            instrument,
             quantity,
             price,
             stop_price,
@@ -286,14 +307,15 @@ class Trader:
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
-
         if not time_in_force: time_in_force = 'gfd'
-        if not price: price = self.quote(instrument["symbol"])["bid_price"]
-        if not price: price = self.quote(instrument["symbol"])["last_trade_price"]
-        if price is not None: price = float(price)
-        if stop_price is not None: price = float(price)
         assert(side in ['buy', 'sell'])
         assert(time_in_force in ['gfd', 'gtc'])
+
+        if not price: price = self.quote(instrument["symbol"])["bid_price"]
+        if not price: price = self.quote(instrument["symbol"])["last_trade_price"]
+
+        if price is not None: price = float(price)
+        if stop_price is not None: stop_price = float(stop_price)
 
         payload = {
             "account": self.account()["url"],
@@ -311,6 +333,42 @@ class Trader:
         res = self.session.post(endpoints.orders(), data=payload, timeout=15)
         res.raise_for_status()
         return res
+
+    def _place_crypto_order_detail(
+            self, crypto, quantity, price, stop_price, side, time_in_force):
+        if not time_in_force: time_in_force = 'gfd'
+
+        trigger = 'stop' if stop_price else 'immediate'
+        order = 'limit' if price else 'market'
+        if not time_in_force: time_in_force = 'gfd'
+        assert(side in ['buy', 'sell'])
+        assert(time_in_force in ['gfd', 'gtc'])
+
+        if price is None:
+            crypto_quote_url = f'https://api.robinhood.com/marketdata/forex/quotes/{crypto}/'
+            price = self._req_get_json(crypto_quote_url)['bid_price']
+
+        if price is not None: price = float(price)
+        if stop_price is not None: stop_price = float(stop_price)
+
+        payload = {
+            "account_id": self.account()["url"],
+            "currency_pair_id": self._crypto_pairs[crypto],
+            'ref_id': uuid.uuid4().hex,
+            "type": order,
+            "time_in_force": time_in_force,
+            "trigger": trigger,
+            "quantity": quantity,
+            "side": side,
+            'price': price,
+            'stop_price': stop_price
+        }
+
+        crypto_order_url = 'https://nummus.robinhood.com/orders/'
+        res = self.session.post(crypto_order_url, data=payload, timeout=15)
+        res.raise_for_status()
+        return res
+
 
     ###########################################################################
     #                               CANCEL ORDER
