@@ -14,7 +14,6 @@ Changelist:
 3) Removed all prompting related methods (except for login)
 4) Removed default 'None' parameters that would cause an exception if not supplied 
        IE (methods like 'buy_market_order' would have quantity marked as optional)   
-
 ------------------
 
 [![Join the chat at https://gitter.im/J-Robinhood/Lobby](https://badges.gitter.im/J-Robinhood/Lobby.svg)](https://gitter.im/J-Robinhood/Lobby?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)

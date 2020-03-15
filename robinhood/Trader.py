@@ -496,7 +496,7 @@ class Trader:
         payload = {}
 
         for field, value in [
-                ('account', self.get_account()['url']),
+                ('account', self.account()['url']),
                 ('instrument', instrument_URL),
                 ('symbol', symbol),
                 ('type', order_type),
@@ -516,53 +516,113 @@ class Trader:
 
         return res
 
-    def cancel_order(self, order_id):
+    def cancel_order(self, order_id):  # noqa: C901
         """
-        Cancels specified order and returns the response (results from `orders` command).
+        Cancels specified order and returns the response (results from `orders`
+            command).
         If order cannot be cancelled, `None` is returned.
         Args:
-            order_id (str or dict): Order ID string that is to be cancelled or open order dict returned from
+            order_id (str or dict): Order ID string that is to be cancelled or open
+                order dict returned from
             order get.
         Returns:
             (:obj:`requests.request`): result from `orders` put command
         """
         if isinstance(order_id, str):
             try:
-                order = self.session.get(endpoints.orders() + order_id, timeout=15).json()
+                order = self.session.get(
+                    endpoints.orders() + order_id, timeout=15
+                ).json()
             except (requests.exceptions.HTTPError) as err_msg:
-                raise ValueError('Failed to get Order for ID: ' + order_id + '\n Error message: ' + repr(err_msg))
+                raise ValueError(
+                    "Failed to get Order for ID: "
+                    + order_id
+                    + "\n Error message: "
+                    + repr(err_msg)
+                )
 
-            if order.get('cancel') is not None:
+            if order.get("cancel") is not None:
                 try:
-                    res = self.session.post(order['cancel'], timeout=15)
+                    res = self.session.post(order["cancel"], timeout=15)
                     res.raise_for_status()
                     return res
-                except (requests.exceptions.HTTPError) as err_msg:
-                    raise ValueError('Failed to cancel order ID: ' + order_id + '\n Error message: '+ repr(err_msg))
-                    return None
+                except requests.exceptions.HTTPError:
+                    try:
+                        # sometimes Robinhood asks for another log in when placing an
+                        # order
+                        res = self.session.post(
+                            order["cancel"], headers=self.headers, timeout=15
+                        )
+                        res.raise_for_status()
+                        return res
+                    except (requests.exceptions.HTTPError) as err_msg:
+                        raise ValueError(
+                            "Failed to cancel order ID: "
+                            + order_id
+                            + "\n Error message: "
+                            + repr(err_msg)
+                        )
+                        return None
 
-        if isinstance(order_id, dict):
-            order_id = order_id['id']
+        elif isinstance(order_id, dict):
+            order_id = order_id["id"]
             try:
-                order = self.session.get(endpoints.orders() + order_id, timeout=15).json()
+                order = self.session.get(
+                    endpoints.orders() + order_id, timeout=15
+                ).json()
             except (requests.exceptions.HTTPError) as err_msg:
-                raise ValueError('Failed to get Order for ID: ' + order_id
-                    + '\n Error message: '+ repr(err_msg))
+                raise ValueError(
+                    "Failed to get Order for ID: "
+                    + order_id
+                    + "\n Error message: "
+                    + repr(err_msg)
+                )
 
-            if order.get('cancel') is not None:
+            if order.get("cancel") is not None:
                 try:
-                    res = self.session.post(order['cancel'], timeout=15)
+                    res = self.session.post(order["cancel"], timeout=15)
                     res.raise_for_status()
                     return res
-                except (requests.exceptions.HTTPError) as err_msg:
-                    raise ValueError('Failed to cancel order ID: ' + order_id
-                         + '\n Error message: '+ repr(err_msg))
-                    return None
+                except requests.exceptions.HTTPError:
+                    try:
+                        # sometimes Robinhood asks for another log in when placing an
+                        # order
+                        res = self.session.post(
+                            order["cancel"], headers=self.headers, timeout=15
+                        )
+                        res.raise_for_status()
+                        return res
+                    except (requests.exceptions.HTTPError) as err_msg:
+                        raise ValueError(
+                            "Failed to cancel order ID: "
+                            + order_id
+                            + "\n Error message: "
+                            + repr(err_msg)
+                        )
+                        return None
 
         elif not isinstance(order_id, str) or not isinstance(order_id, dict):
-            raise ValueError('Cancelling orders requires a valid order_id string or open order dictionary')
-
+            raise ValueError(
+                "Cancelling orders requires a valid order_id string or open order"
+                "dictionary"
+            )
 
         # Order type cannot be cancelled without a valid cancel link
         else:
-            raise ValueError('Unable to cancel order ID: ' + order_id)
+            raise ValueError("Unable to cancel order ID: " + order_id)
+
+    def get_open_orders(self):
+        """
+        Returns all currently open (cancellable) orders.
+        If not orders are currently open, `None` is returned.
+        TODO: Is there a way to get these from the API endpoint without stepping through
+            order history?
+        """
+
+        open_orders = []
+        orders = self.order_history()
+        for order in orders["results"]:
+            if order["cancel"] is not None:
+                open_orders.append(order)
+
+        return open_orders
