@@ -13,7 +13,6 @@ from six.moves.urllib.parse import unquote
 
 
 class Trader:
-    """Wrapper class for fetching/parsing robinhood endpoints """
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
 
     _crypto_pairs = {
@@ -107,22 +106,15 @@ class Trader:
             (:obj:`requests.request`) result from logout endpoint
 
         """
-        req = None
-
-        try:
-            payload = {
-                'client_id': self.client_id,
-                'token': self.refresh_token
-            }
-            req = self.session.post(endpoints.logout(), data=payload, timeout=15)
-            req.raise_for_status()
-        except requests.exceptions.HTTPError as err_msg:
-            warnings.warn('Failed to log out ' + repr(err_msg))
-        finally:
-            self.session.headers['Authorization'] = None
-            self.auth_token = None
-
-        return req
+        payload = {
+            'client_id': self.client_id,
+            'token': self.refresh_token
+        }
+        res = self.session.post(endpoints.logout(), data=payload, timeout=15)
+        self.session.headers['Authorization'] = None
+        self.auth_token = None
+        res.raise_for_status()
+        return res
 
     def _req_get(self, *args, timeout=15, **kwargs):
         res = self.session.get(*args, timeout=timeout, **kwargs)
@@ -137,12 +129,15 @@ class Trader:
     ###########################################################################
 
     def save_session(self, session_name):
-        with open(session_name + '.rb', 'wb') as file:
+        """Save your python session to avoid logging in again,
+            reload with `Trader.load_session(session_name)`"""
+        with open(session_name, 'wb') as file:
             pickle.dump(self, file)
 
     @staticmethod
     def load_session(session_name):
-        with open(session_name + '.rb', 'rb') as file:
+        """load a pickled Trader object created from `save_session`"""
+        with open(session_name, 'rb') as file:
             return pickle.load(file)
 
     ###########################################################################
@@ -150,46 +145,26 @@ class Trader:
     ###########################################################################
 
     def fundamentals(self, symbol):
+        """Fetch fundamentals info"""
         return self._req_get_json(endpoints.fundamentals(symbol.upper()))
 
     def instrument(self, symbol):
-        """Fetch instrument info
-
-            Args:
-                id (str): instrument id
-
-            Returns:
-                (:obj:`dict`): JSON dict of instrument
-        """
+        """Fetch instrument info"""
         url = str(endpoints.instruments()) + "?symbol=" + str(symbol)
         results = self._req_get_json(url)['results']
+        return results if results else Exception(f"Invalid symbol: {symbol}")
 
-        if not results:
-            raise Exception(f"Invalid symbol: {symbol}")
-        else:
-            return results[0]
-
-    def quote(self, stock):
-        """Fetch stock quote
-
-            Args:
-                stock (str): stock ticker
-
-            Returns:
-                (:obj:`dict`): JSON contents from `quotes` endpoint
-            Note: api supports getting multiple quotes in one request
-              by having a comma delimited list for the symbols argument
-              --not supported
-        """
-        crypto_symbol = stock.upper() + 'USD'
+    def quote(self, symbol):
+        """Fetch stock quote"""
+        crypto_symbol = symbol.upper() + 'USD'
         if crypto_symbol in self._crypto_pairs:
             url = str(crypto_endpoints.quotes(crypto_symbol))
             return self._req_get_json(url)
 
-        url = str(endpoints.quotes()) + f"?symbols={stock}"
-        return self._req_get(url).json()['results'][0]
+        url = str(endpoints.quotes()) + f"?symbols={symbol}"
+        return self._req_get_json(url)['results'][0]
 
-    def historical_quotes(self, stock, interval, span, bounds='regular'):
+    def historical_quotes(self, symbol, interval, span, bounds='regular'):
         """Fetch historical data for stock
 
             Note: valid interval/span configs
@@ -198,7 +173,7 @@ class Trader:
                 interval = week
 
             Args:
-                stock (str): stock ticker
+                symbol (str): stock ticker
                 interval (str): resolution of data
                 span (str): length of data
                 bounds (:enum:`Bounds`, optional): 'extended' or 'regular' trading hours
@@ -206,16 +181,16 @@ class Trader:
             Returns:
                 (:obj:`dict`) values returned from `historicals` endpoint
         """
-        crypto_symbol = stock.upper() + 'USD'
+        crypto_symbol = symbol.upper() + 'USD'
         if crypto_symbol in self._crypto_pairs:
             raise NotImplemented("historical quotes is not supported for crypto-currencies")
 
-        stock = stock if isinstance(stock, list) else [stock]
+        symbol = symbol if isinstance(symbol, list) else [symbol]
         assert(bounds in ['immediate', 'regular'])
 
         url = endpoints.historicals()
         params = {
-            'symbols': ','.join(stock).upper(),
+            'symbols': ','.join(symbol).upper(),
             'interval': interval,
             'span': span,
             'bounds': bounds
@@ -390,7 +365,6 @@ class Trader:
     ###########################################################################
     #                               CANCEL ORDER
     ###########################################################################
-    #TODO TEST
     def cancel_order(self, order_id):  # noqa: C901
         """
         Cancels specified order and returns the response (results from `orders`
@@ -403,99 +377,15 @@ class Trader:
         Returns:
             (:obj:`requests.request`): result from `orders` put command
         """
-        if isinstance(order_id, str):
-            try:
-                order = self.session.get(
-                    endpoints.orders() + order_id, timeout=15
-                ).json()
-            except (requests.exceptions.HTTPError) as err_msg:
-                raise ValueError(
-                    "Failed to get Order for ID: "
-                    + order_id
-                    + "\n Error message: "
-                    + repr(err_msg)
-                )
+        try:
+            order = self._req_get_json(endpoints.orders() + order_id)
+        except Exception as error:
+            raise Exception(f"Failed to cancel id: {order_id}, err: {str(error)}")
 
-            if order.get("cancel") is not None:
-                try:
-                    res = self.session.post(order["cancel"], timeout=15)
-                    res.raise_for_status()
-                    return res
-                except requests.exceptions.HTTPError:
-                    try:
-                        # sometimes Robinhood asks for another log in when placing an
-                        # order
-                        res = self.session.post(order["cancel"], timeout=15)
-                        res.raise_for_status()
-                        return res
-                    except (requests.exceptions.HTTPError) as err_msg:
-                        raise ValueError(
-                            "Failed to cancel order ID: "
-                            + order_id
-                            + "\n Error message: "
-                            + repr(err_msg)
-                        )
-                        return None
-
-        elif isinstance(order_id, dict):
-            order_id = order_id["id"]
-            try:
-                order = self.session.get(
-                    endpoints.orders() + order_id, timeout=15
-                ).json()
-            except (requests.exceptions.HTTPError) as err_msg:
-                raise ValueError(
-                    "Failed to get Order for ID: "
-                    + order_id
-                    + "\n Error message: "
-                    + repr(err_msg)
-                )
-
-            if order.get("cancel") is not None:
-                try:
-                    res = self.session.post(order["cancel"], timeout=15)
-                    res.raise_for_status()
-                    return res
-                except requests.exceptions.HTTPError:
-                    try:
-                        # sometimes Robinhood asks for another log in when placing an
-                        # order
-                        res = self.session.post(
-                            order["cancel"], headers=self.headers, timeout=15
-                        )
-                        res.raise_for_status()
-                        return res
-                    except (requests.exceptions.HTTPError) as err_msg:
-                        raise ValueError(
-                            "Failed to cancel order ID: "
-                            + order_id
-                            + "\n Error message: "
-                            + repr(err_msg)
-                        )
-                        return None
-
-        elif not isinstance(order_id, str) or not isinstance(order_id, dict):
-            raise ValueError(
-                "Cancelling orders requires a valid order_id string or open order"
-                "dictionary"
-            )
-
-        # Order type cannot be cancelled without a valid cancel link
-        else:
-            raise ValueError("Unable to cancel order ID: " + order_id)
+        res = self.session.post(order["cancel"], timeout=15)
+        res.raise_for_status()
+        return res
 
     def get_open_orders(self):
-        """
-        Returns all currently open (cancellable) orders.
-        If not orders are currently open, `None` is returned.
-        TODO: Is there a way to get these from the API endpoint without stepping through
-            order history?
-        """
-
-        open_orders = []
-        orders = self.order_history()
-        for order in orders["results"]:
-            if order["cancel"] is not None:
-                open_orders.append(order)
-
-        return open_orders
+        """Returns all open orders"""
+        return [order for order in self.order_history() if order['cancel']]
