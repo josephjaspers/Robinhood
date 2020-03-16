@@ -46,12 +46,12 @@ trader = Trader.load_session('filename')
 ```
 #### Account Data 
 ```
- + account()
- + portfolios() 
- + order_history()
- + dividends()
+ - account()
+ - portfolios() 
+ - order_history()
+ - dividends()
  ```
-####Trading 
+#### Trading 
 ```
  - buy(  
        symbol: str,               # the stock symbol
