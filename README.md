@@ -23,7 +23,8 @@ Logging in will prompt for an access_code which may be submitted  via a console 
 ```python
 trader.save_session('filename')
 ```
-Saves your current robinhood session so you do not need to login again (until the cookie expires). To restore your session:
+Saves your current robinhood session for skipping logging in (until the cookie expires).  
+ To restore your session:
 ```python
 trader = Trader.load_session('filename')
 ```
