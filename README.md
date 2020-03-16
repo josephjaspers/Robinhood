@@ -10,7 +10,7 @@ Changelist:
  + Fixed/Added support for buying/selling crypto currencies
  + Removed/Changed buy/sell interface 
  + Removed all quote-utility methods
- + Removed all usages of prompts (accept for login)
+ + Removed all usages of prompts (except for login)
  
 ------------------
 
