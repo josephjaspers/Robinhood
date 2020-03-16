@@ -8,6 +8,7 @@ import uuid
 import pickle
 
 from . import endpoints
+from . import crypto_endpoints
 from six.moves.urllib.parse import unquote
 
 
@@ -29,7 +30,7 @@ class Trader:
     #                       Logging in and initializing
     ###########################################################################
 
-    def __init__(self):
+    def __init__(self, username=None, password=None):
         self.auth_token = None
         self.session = requests.session()
         self.session.proxies = getproxies()
@@ -43,9 +44,13 @@ class Trader:
             "User-Agent": "robinhood/823 (iPhone; iOS 7.1.2; Scale/2.00)"
         }
 
-    def login(self, username=None, password=None, mfa_code=None, device_token=None):
-        """Save and test login info for robinhood accounts
+        if password:
+            assert(username)
+        if username:
+            self.login(username, password)
 
+    def login(self, username=None, password=None, mfa_code=None, device_token=None):
+        """Login to Robinhood
         Args:
             username (str): username
             password (str): password
@@ -54,9 +59,13 @@ class Trader:
             (bool): received valid auth token
 
         """
-        if not username: username = input("Username: ")
-        if not password: password = getpass.getpass()
-        if not device_token: device_token = uuid.uuid1()
+        if not username:
+            username = input("username: ")
+        if not password:
+            print('password:', end='')
+            password = getpass.getpass()
+        if not device_token:
+            device_token = uuid.uuid1()
 
         payload = {
             'username': username,
@@ -98,6 +107,7 @@ class Trader:
             (:obj:`requests.request`) result from logout endpoint
 
         """
+        req = None
 
         try:
             payload = {
@@ -108,14 +118,11 @@ class Trader:
             req.raise_for_status()
         except requests.exceptions.HTTPError as err_msg:
             warnings.warn('Failed to log out ' + repr(err_msg))
-
-        self.session.headers['Authorization'] = None
-        self.auth_token = None
+        finally:
+            self.session.headers['Authorization'] = None
+            self.auth_token = None
 
         return req
-
-    def is_logged_in(self):
-        return "Authorization" in self.session.headers
 
     def _req_get(self, *args, timeout=15, **kwargs):
         res = self.session.get(*args, timeout=timeout, **kwargs)
@@ -170,9 +177,16 @@ class Trader:
 
             Returns:
                 (:obj:`dict`): JSON contents from `quotes` endpoint
+            Note: api supports getting multiple quotes in one request
+              by having a comma delimited list for the symbols argument
+              --not supported
         """
-        stock = stock if isinstance(stock, list) else [stock]
-        url = str(endpoints.quotes()) + "?symbols=" + ",".join(stock)
+        crypto_symbol = stock.upper() + 'USD'
+        if crypto_symbol in self._crypto_pairs:
+            url = str(crypto_endpoints.quotes(crypto_symbol))
+            return self._req_get_json(url)
+
+        url = str(endpoints.quotes()) + f"?symbols={stock}"
         return self._req_get(url).json()['results'][0]
 
     def historical_quotes(self, stock, interval, span, bounds='regular'):
@@ -192,6 +206,10 @@ class Trader:
             Returns:
                 (:obj:`dict`) values returned from `historicals` endpoint
         """
+        crypto_symbol = stock.upper() + 'USD'
+        if crypto_symbol in self._crypto_pairs:
+            raise NotImplemented("historical quotes is not supported for crypto-currencies")
+
         stock = stock if isinstance(stock, list) else [stock]
         assert(bounds in ['immediate', 'regular'])
 
@@ -226,11 +244,11 @@ class Trader:
     #                               PLACE ORDER
     ###########################################################################
     def buy(self,
-                        symbol,
-                        quantity,
-                        price=None,
-                        stop_price=None,
-                        time_in_force=None):
+            symbol,
+            quantity,
+            price=None,
+            stop_price=None,
+            time_in_force=None):
         """
         Args:
             symbol: the stock symbol
@@ -249,8 +267,12 @@ class Trader:
                                 stop_price=stop_price,
                                 time_in_force=time_in_force)
 
-    def sell(
-            self, symbol, quantity, price, stop_price=None, time_in_force=None):
+    def sell(self,
+             symbol,
+             quantity,
+             price=None,
+             stop_price=None,
+             time_in_force=None):
         """
         Args:
             symbol: the stock symbol
@@ -336,21 +358,20 @@ class Trader:
         return res
 
     def _place_crypto_order_detail(
-            self, crypto, quantity, price, stop_price, side, time_in_force):
+            self, symbol, quantity, price, stop_price, side, time_in_force):
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
 
         if price is None:
-            crypto_quote_url = f'https://api.robinhood.com/marketdata/forex/quotes/{crypto}/'
-            price = self._req_get_json(crypto_quote_url)['bid_price']
+            price = self._req_get_json(crypto_endpoints.quotes(symbol))['bid_price']
 
         if price is not None: price = float(price)
         if stop_price is not None: stop_price = float(stop_price)
 
         payload = {
             "account_id": self.account()["url"],
-            "currency_pair_id": self._crypto_pairs[crypto],
+            "currency_pair_id": self._crypto_pairs[symbol],
             'ref_id': uuid.uuid4().hex,
             "type": order,
             "time_in_force": time_in_force,
@@ -361,8 +382,7 @@ class Trader:
             'stop_price': stop_price
         }
 
-        crypto_order_url = 'https://nummus.robinhood.com/orders/'
-        res = self.session.post(crypto_order_url, data=payload, timeout=15)
+        res = self.session.post(crypto_endpoints.orders(), data=payload, timeout=15)
         res.raise_for_status()
         return res
 
@@ -370,8 +390,6 @@ class Trader:
     ###########################################################################
     #                               CANCEL ORDER
     ###########################################################################
-
-
     #TODO TEST
     def cancel_order(self, order_id):  # noqa: C901
         """
