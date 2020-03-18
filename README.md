@@ -10,7 +10,7 @@ Changelist:
  + Fixed/Added support for buying/selling crypto currencies
  + Removed/Changed buy/sell interface 
  + Removed all quote-utility methods
- + Removed all usages of prompts (accept for login)
+ + Removed all usages of prompts (except for login)
  
 ------------------
 
@@ -23,7 +23,8 @@ Logging in will prompt for an access_code which may be submitted  via a console 
 ```python
 trader.save_session('filename')
 ```
-Saves your current robinhood session so you do not need to login again (until the cookie expires). To restore your session:
+Saves your current robinhood session for skipping logging in (until the cookie expires).  
+ To restore your session:
 ```python
 trader = Trader.load_session('filename')
 ```
@@ -46,12 +47,12 @@ trader = Trader.load_session('filename')
 ```
 #### Account Data 
 ```
- + account()
- + portfolios() 
- + order_history()
- + dividends()
+ - account()
+ - portfolios() 
+ - order_history()
+ - dividends()
  ```
-####Trading 
+#### Trading 
 ```
  - buy(  
        symbol: str,               # the stock symbol
