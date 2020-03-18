@@ -10,6 +10,7 @@ import pickle
 from . import endpoints
 from . import crypto_endpoints
 from six.moves.urllib.parse import unquote
+from json import dumps
 
 
 class Trader:
@@ -151,14 +152,14 @@ class Trader:
     def instrument(self, symbol):
         """Fetch instrument info"""
         url = str(endpoints.instruments()) + "?symbol=" + str(symbol)
-        results = self._req_get_json(url)['results']
+        results = self._req_get_json(url)['results'][0]
         return results if results else Exception(f"Invalid symbol: {symbol}")
 
     def quote(self, symbol):
         """Fetch stock quote"""
         crypto_symbol = symbol.upper() + 'USD'
         if crypto_symbol in self._crypto_pairs:
-            url = str(crypto_endpoints.quotes(crypto_symbol))
+            url = str(crypto_endpoints.quotes(self._crypto_pairs[crypto_symbol]))
             return self._req_get_json(url)
 
         url = str(endpoints.quotes()) + f"?symbols={symbol}"
@@ -210,7 +211,7 @@ class Trader:
         return self._req_get_json(endpoints.portfolios())['results'][0]
 
     def order_history(self):
-        return self._req_get_json(endpoints.orders())
+        return self._req_get_json(endpoints.orders())['results'][0]
 
     def dividends(self):
         return self._req_get_json(endpoints.orders())
@@ -287,9 +288,12 @@ class Trader:
         if symbol.upper() + 'USD' in self._crypto_pairs:
             func = self._place_crypto_order_detail
             instrument = symbol.upper() + 'USD'
+            if not time_in_force: time_in_force = 'gtc'
         else:
             func = self._place_order_detail
             instrument = self.instrument(symbol)
+            if not time_in_force: time_in_force = 'gtc'
+            assert(time_in_force == 'gtc')
 
         if not time_in_force: time_in_force = 'gfd'
         assert(side in ['buy', 'sell'])
@@ -337,27 +341,43 @@ class Trader:
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
+        crypto_id = self._crypto_pairs[symbol]
 
         if price is None:
-            price = self._req_get_json(crypto_endpoints.quotes(symbol))['bid_price']
+            price = self._req_get_json(crypto_endpoints.quotes(crypto_id))['bid_price']
 
+        # Crypto trades requires price be formatted to two decimal places
         if price is not None: price = float(price)
+        price = "{0:.2f}".format(price)
+
         if stop_price is not None: stop_price = float(stop_price)
+        json = self._req_get_json(crypto_endpoints.portfolios())
+        account_id = json['results'][0]['account_id']
 
         payload = {
-            "account_id": self.account()["url"],
-            "currency_pair_id": self._crypto_pairs[symbol],
-            'ref_id': uuid.uuid4().hex,
             "type": order,
+            "side": side,
+            "quantity": quantity,
+            "account_id": account_id,
+            "currency_pair_id": crypto_id,
+            'price': price,
+            'ref_id': uuid.uuid4().hex,
             "time_in_force": time_in_force,
             "trigger": trigger,
-            "quantity": quantity,
-            "side": side,
-            'price': price,
             'stop_price': stop_price
         }
 
+        # Crypto trades must have content-type application/json only
+        content_type = self.session.headers['Content-Type']
+        self.session.headers['Content-Type'] = 'application/json'
+
+        # payload must use json.dumps (unsure why)
+        payload = dumps(payload)
         res = self.session.post(crypto_endpoints.orders(), data=payload, timeout=15)
+
+        # Restore original content-type
+        self.session.headers['Content-Type'] = content_type
+
         res.raise_for_status()
         return res
 

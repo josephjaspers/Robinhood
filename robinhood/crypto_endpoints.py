@@ -11,4 +11,8 @@ def orders():
 
 
 def quotes(symbol):
-	return f'https://api.robinhood.com/marketdata/forex/quotes/{_fix_symbol(symbol)}/'
+	return f'https://api.robinhood.com/marketdata/forex/quotes/{symbol}/'
+
+
+def portfolios(account=None):
+	return crypto_base_url + 'portfolios/' + (account if account else '')
