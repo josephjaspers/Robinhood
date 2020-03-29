@@ -14,6 +14,7 @@ from .crypto_endpoints import crypto_pairs as _crypto_pairs
 from six.moves.urllib.parse import unquote
 from json import dumps
 
+
 class Trader:
 
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
@@ -323,7 +324,6 @@ class Trader:
             time_in_force)
 
         return order_type(self, json_result)
-
 
     def _place_order_detail(
             self, instrument, quantity, price, stop_price, side, time_in_force):
