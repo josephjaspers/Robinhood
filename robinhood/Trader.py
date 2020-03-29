@@ -201,10 +201,10 @@ class Trader:
         return res['results'][0]
 
     def portfolios(self):
-        return self._req_get_json(endpoints.portfolios())['results'][0]
+        return self._req_get_json(endpoints.portfolios())['results']
 
     def order_history(self):
-        return self._req_get_json(endpoints.orders())['results'][0]
+        return self._req_get_json(endpoints.orders())['results']
 
     def dividends(self):
         return self._req_get_json(endpoints.orders())
@@ -306,19 +306,22 @@ class Trader:
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
+        price = price if price else self.quote(instrument['symbol'])['ask_price']
 
         payload = {
             "account": self.account()["url"],
             "instrument": unquote(instrument["url"]),
             "symbol": instrument["symbol"],
-            "type": order.lower(),
-            "time_in_force": time_in_force,
-            "trigger": trigger,
             "quantity": quantity,
             "side": side,
+            "type": order.lower(),
+            "trigger": trigger,
+            "time_in_force": time_in_force,
+            "extended_hours": 'false',
             'price': price,
             'stop_price': stop_price
         }
+        print(payload)
 
         res = self.session.post(endpoints.orders(), data=payload, timeout=15)
         res.raise_for_status()
@@ -332,7 +335,7 @@ class Trader:
         crypto_id = _crypto_pairs[symbol]
 
         if price is None:
-            price = self._req_get_json(crypto_endpoints.quotes(crypto_id))['bid_price']
+            price = self._req_get_json(crypto_endpoints.quotes(crypto_id))['ask_price']
 
         # Crypto trades requires price be formatted to two decimal places
         if price is not None: price = float(price)
@@ -373,32 +376,17 @@ class Trader:
     #                               CANCEL ORDER
     ###########################################################################
 
-    def cancel_order(self, order_id):
-        """
-        Cancels specified order and returns the response (results from `orders`
-            command).
-        If order cannot be cancelled, `None` is returned.
-        Args:
-            order_id (str or dict): Order ID string that is to be cancelled or open
-                order dict returned from
-            order get.
-        Returns:
-            (:obj:`requests.request`): result from `orders` put command
-        """
-        try:
-            order = self._req_get_json(endpoints.orders() + order_id)
-        except Exception as error:
-            raise Exception(f"Failed to cancel id: {order_id}, err: {str(error)}")
+    def cancel_order(self, order):
+        if not isinstance(order, dict):
+            raise Exception('Cancel url is contained in the order dictionary')
 
-        res = self.session.post(order["cancel"], timeout=15)
-        res.raise_for_status()
-        return res.json()
-
-    def cancel_crypto_order(self, order: [dict, str]):
-        if isinstance(order, dict):
-            order = order['id']
-        assert(isinstance(order, str))
-        res = self.session.post(crypto_endpoints.cancel_order(order))
+        if 'cancel' in order:
+            cancel_url = order['cancel']
+        elif 'cancel_url' in order:
+            cancel_url = order['cancel_url']
+        else:
+            raise Exception("Neither, 'cancel' nor 'cancel_url' were found")
+        res = self.session.post(cancel_url, timeout=15)
         res.raise_for_status()
         return res
 
