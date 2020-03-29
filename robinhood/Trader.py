@@ -1,4 +1,5 @@
-import warnings
+from .Order import Order, CryptoOrder
+
 from six.moves.urllib.request import getproxies
 from six.moves import input
 
@@ -13,7 +14,6 @@ from .crypto_endpoints import crypto_pairs as _crypto_pairs
 from six.moves.urllib.parse import unquote
 from json import dumps
 
-
 class Trader:
 
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
@@ -26,6 +26,7 @@ class Trader:
         self.auth_token = None
         self.session = requests.session()
         self.session.proxies = getproxies()
+        self.refresh_token = None
         self.session.headers = {
             "Accept": "*/*",
             "Accept-Encoding": "gzip, deflate",
@@ -37,7 +38,7 @@ class Trader:
         }
 
         if password:
-            assert(username)
+            assert username
         if username:
             self.login(username, password)
 
@@ -200,14 +201,32 @@ class Trader:
         res = self._req_get_json(endpoints.accounts())
         return res['results'][0]
 
+    def crypto_account(self):
+        res = self._req_get_json(crypto_endpoints.accounts())
+        return res['results'][0]
+
     def portfolios(self):
         return self._req_get_json(endpoints.portfolios())['results']
 
-    def order_history(self):
+    def orders(self):
         return self._req_get_json(endpoints.orders())['results']
+
+    def order(self, order:[dict, str]):
+        order_id = order['id'] if isinstance(order, dict) else order
+        return self._req_get_json(endpoints.orders() + order_id)
+
+    def crypto_orders(self):
+        return self._req_get_json(crypto_endpoints.orders())['results']
+
+    def crypto_order(self, order):
+        order_id = order['id'] if isinstance(order, dict) else order
+        return self._req_get_json(crypto_endpoints.orders() + order_id)
 
     def dividends(self):
         return self._req_get_json(endpoints.orders())
+
+    def positions(self):
+        return self._req_get_json(endpoints.positions())
 
     ###########################################################################
     #                               PLACE ORDER
@@ -285,21 +304,26 @@ class Trader:
             instrument = symbol + 'USD'
             if not time_in_force: time_in_force = 'gtc'
             assert(time_in_force == 'gtc')
+            order_type = CryptoOrder
         else:
             func = self._place_order_detail
             instrument = self.instrument(symbol)
             if not time_in_force: time_in_force = 'gfd'
+            order_type = Order
 
         assert(side in ['buy', 'sell'])
         assert(time_in_force in ['gfd', 'gtc'])
 
-        return func(
+        json_result = func(
             instrument,
             quantity,
             price,
             stop_price,
             side,
             time_in_force)
+
+        return order_type(self, json_result)
+
 
     def _place_order_detail(
             self, instrument, quantity, price, stop_price, side, time_in_force):
@@ -376,10 +400,7 @@ class Trader:
     #                               CANCEL ORDER
     ###########################################################################
 
-    def cancel_order(self, order):
-        if not isinstance(order, dict):
-            raise Exception('Cancel url is contained in the order dictionary')
-
+    def cancel(self, order):
         if 'cancel' in order:
             cancel_url = order['cancel']
         elif 'cancel_url' in order:
@@ -389,7 +410,3 @@ class Trader:
         res = self.session.post(cancel_url, timeout=15)
         res.raise_for_status()
         return res
-
-    def open_orders(self):
-        """Returns all open orders"""
-        return [order for order in self.order_history() if order['cancel']]

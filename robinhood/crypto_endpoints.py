@@ -12,7 +12,11 @@ crypto_pairs = {
 
 
 def orders():
-	return 'https://nummus.robinhood.com/orders/'
+	return crypto_base_url + 'orders/'
+
+
+def accounts():
+	return crypto_base_url + 'accounts/'
 
 
 def cancel_order(order_id):
