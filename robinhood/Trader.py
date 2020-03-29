@@ -9,22 +9,14 @@ import pickle
 
 from . import endpoints
 from . import crypto_endpoints
+from .crypto_endpoints import crypto_pairs as _crypto_pairs
 from six.moves.urllib.parse import unquote
 from json import dumps
 
 
 class Trader:
-    client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
 
-    _crypto_pairs = {
-        'BTCUSD': '3d961844-d360-45fc-989b-f6fca761d511',
-        'ETHUSD': '76637d50-c702-4ed1-bcb5-5b0732a81f48',
-        'ETCUSD': '7b577ce3-489d-4269-9408-796a0d1abb3a',
-        'BCHUSD': '2f2b77c4-e426-4271-ae49-18d5cb296d3a',
-        'BSVUSD': '086a8f9f-6c39-43fa-ac9f-57952f4a1ba6',
-        'LTCUSD': '383280b1-ff53-43fc-9c84-f01afd0989cd',
-        'DOGEUSD': '1ef78e1b-049b-4f12-90e5-555dcf2fe204'
-    }
+    client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
 
     ###########################################################################
     #                       Logging in and initializing
@@ -157,9 +149,10 @@ class Trader:
 
     def quote(self, symbol):
         """Fetch stock quote"""
-        crypto_symbol = symbol.upper() + 'USD'
-        if crypto_symbol in self._crypto_pairs:
-            url = str(crypto_endpoints.quotes(self._crypto_pairs[crypto_symbol]))
+        symbol = symbol.upper()
+        crypto_symbol = symbol + 'USD'
+        if crypto_symbol in _crypto_pairs:
+            url = str(crypto_endpoints.quotes(_crypto_pairs[crypto_symbol]))
             return self._req_get_json(url)
 
         url = str(endpoints.quotes()) + f"?symbols={symbol}"
@@ -183,7 +176,7 @@ class Trader:
                 (:obj:`dict`) values returned from `historicals` endpoint
         """
         crypto_symbol = symbol.upper() + 'USD'
-        if crypto_symbol in self._crypto_pairs:
+        if crypto_symbol in _crypto_pairs:
             raise NotImplemented("historical quotes is not supported for crypto-currencies")
 
         symbol = symbol if isinstance(symbol, list) else [symbol]
@@ -285,17 +278,18 @@ class Trader:
         Returns:
             Response object
         """
-        if symbol.upper() + 'USD' in self._crypto_pairs:
+        symbol = symbol.upper()
+
+        if symbol + 'USD' in _crypto_pairs:
             func = self._place_crypto_order_detail
-            instrument = symbol.upper() + 'USD'
+            instrument = symbol + 'USD'
             if not time_in_force: time_in_force = 'gtc'
+            assert(time_in_force == 'gtc')
         else:
             func = self._place_order_detail
             instrument = self.instrument(symbol)
-            if not time_in_force: time_in_force = 'gtc'
-            assert(time_in_force == 'gtc')
+            if not time_in_force: time_in_force = 'gfd'
 
-        if not time_in_force: time_in_force = 'gfd'
         assert(side in ['buy', 'sell'])
         assert(time_in_force in ['gfd', 'gtc'])
 
@@ -313,12 +307,6 @@ class Trader:
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
 
-        if not price: price = self.quote(instrument["symbol"])["bid_price"]
-        if not price: price = self.quote(instrument["symbol"])["last_trade_price"]
-
-        if price is not None: price = float(price)
-        if stop_price is not None: stop_price = float(stop_price)
-
         payload = {
             "account": self.account()["url"],
             "instrument": unquote(instrument["url"]),
@@ -334,14 +322,14 @@ class Trader:
 
         res = self.session.post(endpoints.orders(), data=payload, timeout=15)
         res.raise_for_status()
-        return res
+        return res.json()
 
     def _place_crypto_order_detail(
             self, symbol, quantity, price, stop_price, side, time_in_force):
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
-        crypto_id = self._crypto_pairs[symbol]
+        crypto_id = _crypto_pairs[symbol]
 
         if price is None:
             price = self._req_get_json(crypto_endpoints.quotes(crypto_id))['bid_price']
@@ -379,13 +367,13 @@ class Trader:
         self.session.headers['Content-Type'] = content_type
 
         res.raise_for_status()
-        return res
-
+        return res.json()
 
     ###########################################################################
     #                               CANCEL ORDER
     ###########################################################################
-    def cancel_order(self, order_id):  # noqa: C901
+
+    def cancel_order(self, order_id):
         """
         Cancels specified order and returns the response (results from `orders`
             command).
@@ -404,8 +392,16 @@ class Trader:
 
         res = self.session.post(order["cancel"], timeout=15)
         res.raise_for_status()
+        return res.json()
+
+    def cancel_crypto_order(self, order: [dict, str]):
+        if isinstance(order, dict):
+            order = order['id']
+        assert(isinstance(order, str))
+        res = self.session.post(crypto_endpoints.cancel_order(order))
+        res.raise_for_status()
         return res
 
-    def get_open_orders(self):
+    def open_orders(self):
         """Returns all open orders"""
         return [order for order in self.order_history() if order['cancel']]
