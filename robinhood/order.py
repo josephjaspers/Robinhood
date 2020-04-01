@@ -1,12 +1,11 @@
 from .detail.const_dict import ConstDict
+from .detail.timestamp import timestamp_now
 from datetime import datetime
 
 
 class OrderBase(ConstDict):
 	def __init__(self, order: dict):
-		order['time'] = datetime.now()
-
-		# TODO add `quantity` when fractional shares are supported
+		order['time'] = timestamp_now()
 		for key in ['price', 'stop_price']:
 			if key in order and order[key]:
 				order['price'] = float(order[key])

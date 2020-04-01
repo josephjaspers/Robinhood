@@ -1,11 +1,12 @@
 from .detail.const_dict import ConstDict
+from .detail.timestamp import timestamp_now
 from datetime import datetime
 
 
 class QuoteBase(ConstDict):
 
-	def __init__(self, quote, float_keys): 
-		quote['time'] = datetime.now()
+	def __init__(self, quote, float_keys):
+		quote['time'] = timestamp_now()
 
 		for key in float_keys:
 			if key in quote and quote[key]:
