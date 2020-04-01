@@ -244,7 +244,8 @@ class Trader:
             stop_price=None,
             trailing_stop_percent=None,
             trailing_stop_amount=None,
-            time_in_force=None):
+            time_in_force=None,
+            extended_hours=False):
         """
         Args:
             symbol: the stock symbol
@@ -262,7 +263,8 @@ class Trader:
                                 stop_price=stop_price,
                                 trailing_stop_percent=trailing_stop_percent,
                                 trailing_stop_amount=trailing_stop_amount,
-                                time_in_force=time_in_force)
+                                time_in_force=time_in_force,
+                                extended_hours=extended_hours)
 
     def sell(self,
              symbol,
@@ -271,7 +273,8 @@ class Trader:
              stop_price=None,
              trailing_stop_percent=None,
              trailing_stop_amount=None,
-             time_in_force=None):
+             time_in_force=None,
+             extended_hours=False):
         """
         Args:
             symbol: the stock symbol
@@ -309,7 +312,8 @@ class Trader:
                                 stop_price=stop_price,
                                 trailing_stop_percent=trailing_stop_percent,
                                 trailing_stop_amount=trailing_stop_amount,
-                                time_in_force=time_in_force)
+                                time_in_force=time_in_force,
+                                extended_hours=extended_hours)
 
     def place_order(self,
                     symbol,
@@ -319,7 +323,8 @@ class Trader:
                     trailing_stop_percent=None,
                     trailing_stop_amount=None,
                     stop_price=None,
-                    time_in_force=None):
+                    time_in_force=None,
+                    extended_hours=None):
         """
         Args:
             symbol: the stock symbol
@@ -378,7 +383,8 @@ class Trader:
             trailing_stop_percent,
             trailing_stop_amount,
             side,
-            time_in_force)
+            time_in_force,
+            extended_hours)
 
         return order_type(self, json_result)
 
@@ -390,12 +396,13 @@ class Trader:
                             trailing_stop_percent,
                             trailing_stop_amount,
                             side,
-                            time_in_force):
+                            time_in_force,
+                            extended_hours):
 
         is_stop = any([stop_price, trailing_stop_percent, trailing_stop_amount])
         trigger = 'stop' if is_stop else 'immediate'
         order = 'limit' if price else 'market'
-        price = price if price else self.quote(instrument['symbol'])['ask_price']
+        price = price if price or is_stop else self.quote(instrument['symbol'])['ask_price']
 
         payload = {
             "account": self.account()["url"],
@@ -406,20 +413,30 @@ class Trader:
             "type": order.lower(),
             "trigger": trigger,
             "time_in_force": time_in_force,
-            "extended_hours": 'false',
             'price': price,
-            'stop_price': stop_price
+            'stop_price': stop_price,
         }
 
+        if extended_hours in ['true', True]:
+            payload['ref_id'] = str(uuid.uuid4())
+            payload['extended_hours'] = 'true'
+        elif extended_hours in ['false', False, None]:
+            payload['extended_hours'] = 'false'
+        else:
+            raise Exception("Invalid argument for extended hours: " + str(extended_hours))
+
         if trailing_stop_amount or trailing_stop_percent:
+            quote = float(self.quote(instrument['symbol'])['ask_price'])
+
             if trailing_stop_amount:
                 trailing_peg = {
                     'type': 'price',
-                    'price': {
+                    'amount': {
                         'amount': trailing_stop_amount,
                         'currency_code': 'USD'
                     }
                 }
+                payload['stop_price'] = quote - trailing_stop_percent
             else:
                 if not isinstance(trailing_stop_percent, int):
                     raise Exception("trailing stop percent must be int")
@@ -428,6 +445,7 @@ class Trader:
                     'type': 'percentage',
                     'percentage': trailing_stop_percent
                 }
+                payload['stop_price'] = quote * (1 - (trailing_stop_percent/100))
 
             payload['trailing_peg'] = trailing_peg
 
@@ -443,7 +461,11 @@ class Trader:
                                    trailing_stop_percent,
                                    trailing_stop_amount,
                                    side,
-                                   time_in_force):
+                                   time_in_force,
+                                   extended_hours):
+
+        if extended_hours is not None:
+            raise Exception("extended hours is not a valid argument for crypto")
 
         if trailing_stop_amount or trailing_stop_percent or stop_price:
             raise Exception(
