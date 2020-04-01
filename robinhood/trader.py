@@ -1,4 +1,5 @@
-from .Order import Order, CryptoOrder
+from .order import Order, CryptoOrder
+from .quote import Quote, CryptoQuote
 
 from six.moves.urllib.request import getproxies
 from six.moves import input
@@ -155,10 +156,10 @@ class Trader:
         crypto_symbol = symbol + 'USD'
         if crypto_symbol in _crypto_pairs:
             url = str(crypto_endpoints.quotes(_crypto_pairs[crypto_symbol]))
-            return self._req_get_json(url)
+            return CryptoQuote(self._req_get_json(url))
 
         url = str(endpoints.quotes()) + f"?symbols={symbol}"
-        return self._req_get_json(url)['results'][0]
+        return Quote(self._req_get_json(url)['results'][0])
 
     def historical_quotes(self, symbol, interval, span, bounds='regular'):
         """Fetch historical data for stock
@@ -210,18 +211,22 @@ class Trader:
         return self._req_get_json(endpoints.portfolios())['results']
 
     def orders(self):
-        return self._req_get_json(endpoints.orders())['results']
+        orders = self._req_get_json(endpoints.orders())['results']
+        return [Order(self, order) for order in orders]
 
     def order(self, order:[dict, str]):
         order_id = order['id'] if isinstance(order, dict) else order
-        return self._req_get_json(endpoints.orders() + order_id)
+        json = self._req_get_json(endpoints.orders() + order_id)
+        return Order(self, json)
 
     def crypto_orders(self):
-        return self._req_get_json(crypto_endpoints.orders())['results']
+        orders = self._req_get_json(crypto_endpoints.orders())['results']
+        return [CryptoOrder(self, order) for order in orders]
 
     def crypto_order(self, order):
         order_id = order['id'] if isinstance(order, dict) else order
-        return self._req_get_json(crypto_endpoints.orders() + order_id)
+        json = self._req_get_json(crypto_endpoints.orders() + order_id)
+        return CryptoOrder(self, json)
 
     def dividends(self):
         return self._req_get_json(endpoints.orders())
@@ -237,6 +242,8 @@ class Trader:
             quantity,
             price=None,
             stop_price=None,
+            trailing_stop_percent=None,
+            trailing_stop_amount=None,
             time_in_force=None):
         """
         Args:
@@ -246,14 +253,15 @@ class Trader:
             stop_price: the stop-loss price, if None defaults to an immediate (regular) order
             time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
 
-        Returns:
-            Response object
+        Returns: Order object
         """
         return self.place_order(symbol=symbol,
                                 quantity=quantity,
                                 price=price,
                                 side='buy',
                                 stop_price=stop_price,
+                                trailing_stop_percent=trailing_stop_percent,
+                                trailing_stop_amount=trailing_stop_amount,
                                 time_in_force=time_in_force)
 
     def sell(self,
@@ -261,6 +269,8 @@ class Trader:
              quantity,
              price=None,
              stop_price=None,
+             trailing_stop_percent=None,
+             trailing_stop_amount=None,
              time_in_force=None):
         """
         Args:
@@ -270,14 +280,35 @@ class Trader:
             stop_price: the stop-loss price, if None defaults to an immediate (regular) order
             time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
 
-        Returns:
-            Response object
+        Returns: (Order Object) (non-mutable dict)
+        {
+           "account_id":"<account_id>>",
+           "average_price":"None",
+           "cancel_url":"<cancel_url>>",
+           "created_at":"2020-03-31T16:27:40.737772-04:00",
+           "cumulative_quantity":"0.000000000000000000",
+           "currency_pair_id":"3d961844-d360-45fc-989b-f6fca761d511",
+           "executions":[],
+           "id":"<guid>",
+           "last_transaction_at":"None",
+           "price":"6504.900000000000000000",
+           "quantity":"0.000082200000000000",
+           "ref_id":"<guid>>",
+           "rounded_executed_notional":"0.00",
+           "side": "sell"
+           "state": ??
+           "time_in_force":"gtc" or "gfd"
+           "type":"market",
+           "updated_at":"2020-03-31T16:27:40.866278-04:00"
+        }
         """
         return self.place_order(symbol=symbol,
                                 quantity=quantity,
                                 price=price,
                                 side='sell',
                                 stop_price=stop_price,
+                                trailing_stop_percent=trailing_stop_percent,
+                                trailing_stop_amount=trailing_stop_amount,
                                 time_in_force=time_in_force)
 
     def place_order(self,
@@ -285,6 +316,8 @@ class Trader:
                     quantity,
                     side,
                     price=None,
+                    trailing_stop_percent=None,
+                    trailing_stop_amount=None,
                     stop_price=None,
                     time_in_force=None):
         """
@@ -296,7 +329,29 @@ class Trader:
             time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
 
         Returns:
-            Response object
+            (Order Object) (non-mutable dict)
+
+            Example:
+            {
+               "account_id":"<account_id>>",
+               "average_price":"None",
+               "cancel_url":"<cancel_url>>",
+               "created_at":"2020-03-31T16:27:40.737772-04:00",
+               "cumulative_quantity":"0.000000000000000000",
+               "currency_pair_id":"3d961844-d360-45fc-989b-f6fca761d511",
+               "executions":[],
+               "id":"<guid>",
+               "last_transaction_at":"None",
+               "price":"6504.900000000000000000",
+               "quantity":"0.000082200000000000",
+               "ref_id":"<guid>>",
+               "rounded_executed_notional":"0.00",
+               "side": "buy"
+               "state" or "status": 'filled' or 'canceled' or 'pending'
+               "time_in_force":"gtc" or "gfd"
+               "type":"market",
+               "updated_at":"2020-03-31T16:27:40.866278-04:00"
+            }
         """
         symbol = symbol.upper()
 
@@ -320,15 +375,25 @@ class Trader:
             quantity,
             price,
             stop_price,
+            trailing_stop_percent,
+            trailing_stop_amount,
             side,
             time_in_force)
 
         return order_type(self, json_result)
 
-    def _place_order_detail(
-            self, instrument, quantity, price, stop_price, side, time_in_force):
+    def _place_order_detail(self,
+                            instrument,
+                            quantity,
+                            price,
+                            stop_price,
+                            trailing_stop_percent,
+                            trailing_stop_amount,
+                            side,
+                            time_in_force):
 
-        trigger = 'stop' if stop_price else 'immediate'
+        is_stop = any([stop_price, trailing_stop_percent, trailing_stop_amount])
+        trigger = 'stop' if is_stop else 'immediate'
         order = 'limit' if price else 'market'
         price = price if price else self.quote(instrument['symbol'])['ask_price']
 
@@ -345,14 +410,45 @@ class Trader:
             'price': price,
             'stop_price': stop_price
         }
-        print(payload)
+
+        if trailing_stop_amount or trailing_stop_percent:
+            if trailing_stop_amount:
+                trailing_peg = {
+                    'type': 'price',
+                    'price': {
+                        'amount': trailing_stop_amount,
+                        'currency_code': 'USD'
+                    }
+                }
+            else:
+                if not isinstance(trailing_stop_percent, int):
+                    raise Exception("trailing stop percent must be int")
+
+                trailing_peg = {
+                    'type': 'percentage',
+                    'percentage': trailing_stop_percent
+                }
+
+            payload['trailing_peg'] = trailing_peg
 
         res = self.session.post(endpoints.orders(), data=payload, timeout=15)
         res.raise_for_status()
         return res.json()
 
-    def _place_crypto_order_detail(
-            self, symbol, quantity, price, stop_price, side, time_in_force):
+    def _place_crypto_order_detail(self,
+                                   symbol,
+                                   quantity,
+                                   price,
+                                   stop_price,
+                                   trailing_stop_percent,
+                                   trailing_stop_amount,
+                                   side,
+                                   time_in_force):
+
+        if trailing_stop_amount or trailing_stop_percent or stop_price:
+            raise Exception(
+                "trailing_stop_amount, trailing_stop_percent, and stop_price, "
+                "are not supported arguments for crypto-currencies")
 
         trigger = 'stop' if stop_price else 'immediate'
         order = 'limit' if price else 'market'
