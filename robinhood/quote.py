@@ -1,24 +1,27 @@
 from .detail.const_dict import ConstDict
-from .detail.timestamp import timestamp_now
+from .detail.common import timestamp_now, _to_float
 from datetime import datetime
+import pandas as pd
 
 
 class QuoteBase(ConstDict):
 
-	def __init__(self, quote, float_keys):
+	def __init__(self, quote):
 		quote['time'] = timestamp_now()
-
-		for key in float_keys:
-			if key in quote and quote[key]:
-				quote[key] = float(quote[key])
 		ConstDict.__init__(self, quote)
+
+	def _get(self, key):
+		return self._dict[key]
+
+	def _get_float(self, key):
+		return _to_float(self._get(key))
 
 	@property
 	def symbol(self) -> str:
 		return self._dict['symbol']
 
 	@property
-	def time(self) -> datetime:
+	def time(self) -> pd.Timestamp:
 		return self._dict['time']
 
 
@@ -44,22 +47,28 @@ class Quote(QuoteBase):
 		}
 	"""
 
-	def __init__(self, quote):
-		float_keys = ['ask_price',
-					  'bid_price',
-					  'last_trade_price',
-					  'last_extended_hours_trade_price',
-					  'previous_close',
-					  'adjusted_previous_close']
-		QuoteBase.__init__(self, quote, float_keys)
-
 	@property
 	def ask(self) -> float:
-		return self._dict['ask_price']
+		return self._get_float('ask_price')
+
+	def __init__(self, quote):
+		QuoteBase.__init__(self, quote)
 
 	@property
 	def bid(self) -> float:
-		return self._dict['bid_price']
+		return self._get_float('bid_price')
+
+	@property
+	def last_trade_price(self) -> float:
+		return self._get_float('last_trade_price')
+
+	@property
+	def previous_close(self) -> float:
+		return self._get_float('last_trade_price')
+
+	@property
+	def adjusted_previous_close(self) -> float:
+		return self._get_float('last_trade_price')
 
 	@property
 	def ask_size(self) -> int:
@@ -87,35 +96,28 @@ class CryptoQuote(QuoteBase):
 	"""
 
 	def __init__(self, quote):
-		float_keys = ['ask_price',
-					  'bid_price',
-					  'mark_price',
-					  'high_price',
-					  'low_price',
-					  'open_price']
-		
-		QuoteBase.__init__(self, quote, float_keys)
+		QuoteBase.__init__(self, quote)
 
 	@property
 	def ask(self) -> float:
-		return self._dict['ask_price']
+		return self._get_float('ask_price')
 
 	@property
 	def bid(self) -> float:
-		return self._dict['bid_price']
+		return self._get_float('bid_price')
 
 	@property
 	def mark(self) -> float:
-		return self._dict['mark_price']
+		return self._get_float('mark_price')
 
 	@property
 	def high(self) -> float:
-		return self._dict['high_price']
+		return self._get_float('high_price')
 
 	@property
 	def low(self) -> float:
-		return self._dict['low_price']
+		return self._get_float('low_price')
 
 	@property
 	def open(self) -> float:
-		return self._dict['open_price']
+		return self._get_float('open_price')

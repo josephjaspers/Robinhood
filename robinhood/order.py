@@ -1,15 +1,12 @@
 from .detail.const_dict import ConstDict
-from .detail.timestamp import timestamp_now
+from .detail.common import timestamp_now, _to_float
 from datetime import datetime
 
 
 class OrderBase(ConstDict):
 	def __init__(self, order: dict):
 		order['time'] = timestamp_now()
-		for key in ['price', 'stop_price']:
-			if key in order and order[key]:
-				order['price'] = float(order[key])
-			ConstDict.__init__(self, order)
+		ConstDict.__init__(self, order)
 
 	@property
 	def time(self) -> datetime:
@@ -38,13 +35,13 @@ class Order(OrderBase):
 	}
 	"""
 
-	def __init__(self, trader, order: dict):
-		OrderBase.__init__(self, order)
+	def __init__(self, trader, order: dict, init_local_time=True):
+		OrderBase.__init__(self, order, init_local_time)
 		self._trader = trader
 
 	def update(self):
 		"""Update this order's information by pinging robinhood"""
-		self._dict = self._trader.order(self._dict)
+		self._dict = self._trader.order(self._dict)._dict
 
 	def cancel(self):
 		"""Cancel this order, does not check if ordered has been executed"""
@@ -60,15 +57,15 @@ class Order(OrderBase):
 
 	def status(self, update=True):
 		"""Returns state of order, return values are 'filled', 'canceled', 'pending', 'queued'?"""
-		status = self._dict['status']
+		status = self._dict['state']
 		if update and status not in ['canceled', 'filled']:
 			self.update()
-			status = self._dict['status']
+			status = self._dict['state']
 		return status
 
 	@property
 	def price(self) -> float:
-		return self._dict['price']
+		return _to_float(self._dict['price'])
 
 	@property
 	def side(self) -> str:
@@ -116,13 +113,5 @@ class CryptoOrder(Order):
 		return self._dict['state']
 
 	@property
-	def price(self) -> float:
-		return self._dict['price']
-
-	@property
-	def side(self) -> str:
-		return self._dict['side']
-
-	@property
 	def quantity(self) -> float:
-		return self._dict['quantity']
+		return float(self._dict['quantity'])

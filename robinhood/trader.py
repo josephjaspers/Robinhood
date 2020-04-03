@@ -112,13 +112,22 @@ class Trader:
         res.raise_for_status()
         return res
 
-    def _req_get(self, *args, timeout=15, **kwargs):
+    def _req_get(self, *args, timeout=15, asjson=True, **kwargs):
         res = self.session.get(*args, timeout=timeout, **kwargs)
         res.raise_for_status()
-        return res
+        return res.json() if asjson else res
 
-    def _req_get_json(self, *args, timeout=15, **kwargs):
-        return self._req_get(*args, timeout=timeout, **kwargs).json()
+    def _req_post(self, *args, timeout=15, asjson=True, **kwargs):
+        """Should be used for api calls only (not login)"""
+        self.session.headers['Content-Type'] = 'application/json'
+        self.session.headers['Accept'] = '*/*'
+        self.session.headers['Sec-Fetch-Site'] = 'same-site'
+        self.session.headers['Sec-Fetch-Mode'] = 'cors'
+        self.session.headers['Accept-Encoding'] = 'gzip, deflate, br'
+        self.session.headers['Accept-Language'] = 'en-US,en;q=0.9'
+        res = self.session.post(*args, timeout=timeout, **kwargs)
+        res.raise_for_status()
+        return res.json() if asjson else res
 
     ###########################################################################
     #                        SAVING AND LOADING SESSIONS
@@ -142,12 +151,12 @@ class Trader:
 
     def fundamentals(self, symbol):
         """Fetch fundamentals info"""
-        return self._req_get_json(endpoints.fundamentals(symbol.upper()))
+        return self._req_get(endpoints.fundamentals(symbol.upper()))
 
     def instrument(self, symbol):
         """Fetch instrument info"""
         url = str(endpoints.instruments()) + "?symbol=" + str(symbol)
-        results = self._req_get_json(url)['results'][0]
+        results = self._req_get(url)['results'][0]
         return results if results else Exception(f"Invalid symbol: {symbol}")
 
     def quote(self, symbol):
@@ -156,10 +165,10 @@ class Trader:
         crypto_symbol = symbol + 'USD'
         if crypto_symbol in _crypto_pairs:
             url = str(crypto_endpoints.quotes(_crypto_pairs[crypto_symbol]))
-            return CryptoQuote(self._req_get_json(url))
+            return CryptoQuote(self._req_get(url))
 
         url = str(endpoints.quotes()) + f"?symbols={symbol}"
-        return Quote(self._req_get_json(url)['results'][0])
+        return Quote(self._req_get(url)['results'][0])
 
     def historical_quotes(self, symbol, interval, span, bounds='regular'):
         """Fetch historical data for stock
@@ -193,46 +202,47 @@ class Trader:
             'bounds': bounds
         }
         url += '?' + '&'.join([f'{k}={v}' for k,v in params.items() if v])
-        return self._req_get_json(url)['results'][0]
+        return self._req_get(url)['results'][0]
 
     ###########################################################################
     #                               Account Data
     ###########################################################################
 
     def account(self):
-        res = self._req_get_json(endpoints.accounts())
+        res = self._req_get(endpoints.accounts())
         return res['results'][0]
 
     def crypto_account(self):
-        res = self._req_get_json(crypto_endpoints.accounts())
+        res = self._req_get(crypto_endpoints.accounts())
         return res['results'][0]
 
-    def portfolios(self):
-        return self._req_get_json(endpoints.portfolios())['results']
+    def portfolio(self):
+        """Returns the first portfolio result, current rb only supports 1 portfolio"""
+        return self._req_get(endpoints.portfolios())['results'][0]
 
     def orders(self):
-        orders = self._req_get_json(endpoints.orders())['results']
-        return [Order(self, order) for order in orders]
+        orders = self._req_get(endpoints.orders())['results']
+        return [Order(self, order, False) for order in orders]
 
     def order(self, order:[dict, str]):
         order_id = order['id'] if isinstance(order, dict) else order
-        json = self._req_get_json(endpoints.orders() + order_id)
-        return Order(self, json)
+        json = self._req_get(endpoints.orders() + order_id)
+        return Order(self, json, False)
 
     def crypto_orders(self):
-        orders = self._req_get_json(crypto_endpoints.orders())['results']
-        return [CryptoOrder(self, order) for order in orders]
+        orders = self._req_get(crypto_endpoints.orders())['results']
+        return [CryptoOrder(self, order, False) for order in orders]
 
     def crypto_order(self, order):
         order_id = order['id'] if isinstance(order, dict) else order
-        json = self._req_get_json(crypto_endpoints.orders() + order_id)
-        return CryptoOrder(self, json)
+        json = self._req_get(crypto_endpoints.orders() + order_id)
+        return CryptoOrder(self, json, False)
 
     def dividends(self):
-        return self._req_get_json(endpoints.orders())
+        return self._req_get(endpoints.orders())
 
     def positions(self):
-        return self._req_get_json(endpoints.positions())
+        return self._req_get(endpoints.positions())
 
     ###########################################################################
     #                               PLACE ORDER
@@ -314,6 +324,12 @@ class Trader:
                                 trailing_stop_amount=trailing_stop_amount,
                                 time_in_force=time_in_force,
                                 extended_hours=extended_hours)
+
+    def _fprice(self, value):
+        if not value:
+            return value
+        else:
+            return "{0:.2f}".format(round(float(value), 2))
 
     def place_order(self,
                     symbol,
@@ -399,10 +415,18 @@ class Trader:
                             time_in_force,
                             extended_hours):
 
-        is_stop = any([stop_price, trailing_stop_percent, trailing_stop_amount])
+        stop_args = [trailing_stop_amount, trailing_stop_percent, stop_price]
+        if sum([bool(sa) for sa in stop_args]) > 1:
+            raise Exception("stops arguments are mutually exclusive "
+                            "(stop_price, trailing_stop_price, trailing_stop_percent)")
+
+        is_trailing_stop = any([trailing_stop_percent, trailing_stop_amount])
+        is_stop = stop_price or is_trailing_stop
         trigger = 'stop' if is_stop else 'immediate'
         order = 'limit' if price else 'market'
-        price = price if price or is_stop else self.quote(instrument['symbol'])['ask_price']
+
+        if not (is_trailing_stop and side == 'sell') and not price:
+            price = self._fprice(self.quote(instrument['symbol']).ask)
 
         payload = {
             "account": self.account()["url"],
@@ -415,28 +439,25 @@ class Trader:
             "time_in_force": time_in_force,
             'price': price,
             'stop_price': stop_price,
+            'extended_hours': 'true' if extended_hours else 'false'
         }
 
-        if extended_hours in ['true', True]:
-            payload['ref_id'] = str(uuid.uuid4())
-            payload['extended_hours'] = 'true'
-        elif extended_hours in ['false', False, None]:
-            payload['extended_hours'] = 'false'
-        else:
-            raise Exception("Invalid argument for extended hours: " + str(extended_hours))
-
         if trailing_stop_amount or trailing_stop_percent:
-            quote = float(self.quote(instrument['symbol'])['ask_price'])
+            quote = self.quote(instrument['symbol']).ask
 
             if trailing_stop_amount:
                 trailing_peg = {
                     'type': 'price',
-                    'amount': {
+                    'price': {
                         'amount': trailing_stop_amount,
                         'currency_code': 'USD'
                     }
                 }
-                payload['stop_price'] = quote - trailing_stop_percent
+
+                modifier = -1 if side == 'sell' else 1
+                stop_price = quote + trailing_stop_amount * modifier
+                print(quote, trailing_stop_amount, modifier)
+                payload['stop_price'] = self._fprice(stop_price)
             else:
                 if not isinstance(trailing_stop_percent, int):
                     raise Exception("trailing stop percent must be int")
@@ -445,13 +466,16 @@ class Trader:
                     'type': 'percentage',
                     'percentage': trailing_stop_percent
                 }
-                payload['stop_price'] = quote * (1 - (trailing_stop_percent/100))
+
+                trailing_stop_ratio = trailing_stop_percent/100
+                if side == 'buy': trailing_stop_ratio += 1
+                payload['stop_price'] = self._fprice(quote * trailing_stop_ratio)
 
             payload['trailing_peg'] = trailing_peg
 
-        res = self.session.post(endpoints.orders(), data=payload, timeout=15)
-        res.raise_for_status()
-        return res.json()
+        payload = {k:v for k,v in payload.items() if v}
+        payload = dumps(payload)
+        return self._req_post(endpoints.orders(), data=payload)
 
     def _place_crypto_order_detail(self,
                                    symbol,
@@ -476,16 +500,12 @@ class Trader:
         order = 'limit' if price else 'market'
         crypto_id = _crypto_pairs[symbol]
 
-        if price is None:
-            price = self._req_get_json(crypto_endpoints.quotes(crypto_id))['ask_price']
+        if not price:
+            price = self.quote(symbol).ask
 
-        # Crypto trades requires price be formatted to two decimal places
-        if price is not None: price = float(price)
-        price = "{0:.2f}".format(price)
-
-        if stop_price is not None: stop_price = float(stop_price)
-        json = self._req_get_json(crypto_endpoints.portfolios())
-        account_id = json['results'][0]['account_id']
+        stop_price = self._fprice(stop_price)
+        price = self._fprice(price)
+        account_id = self.portfolio()['account_id']
 
         payload = {
             "type": order,
@@ -500,19 +520,10 @@ class Trader:
             'stop_price': stop_price
         }
 
-        # Crypto trades must have content-type application/json only
-        content_type = self.session.headers['Content-Type']
-        self.session.headers['Content-Type'] = 'application/json'
-
         # payload must use json.dumps (unsure why)
+        payload = {k:v for k,v in payload.items() if v}
         payload = dumps(payload)
-        res = self.session.post(crypto_endpoints.orders(), data=payload, timeout=15)
-
-        # Restore original content-type
-        self.session.headers['Content-Type'] = content_type
-
-        res.raise_for_status()
-        return res.json()
+        return self._req_post(crypto_endpoints.orders(), data=payload)
 
     ###########################################################################
     #                               CANCEL ORDER
@@ -525,6 +536,4 @@ class Trader:
             cancel_url = order['cancel_url']
         else:
             raise Exception("Neither, 'cancel' nor 'cancel_url' were found")
-        res = self.session.post(cancel_url, timeout=15)
-        res.raise_for_status()
-        return res
+        return self._req_post(cancel_url, asjson=False)
