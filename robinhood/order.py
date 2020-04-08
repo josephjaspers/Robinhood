@@ -44,6 +44,8 @@ class Order(OrderBase):
 		"""Update this order's information by pinging robinhood"""
 		update_dict = self._trader.order(self._dict)._dict
 
+		# historical orders will not have time,
+		# orders made during this session will have a pd.Timestamp added to them  
 		if 'time' in self:
 			update_dict['time'] = self.time
 

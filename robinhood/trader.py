@@ -494,10 +494,9 @@ class Trader:
             symbol: the stock symbol
             quantity: number of shares
             price: the limit price, if None defaults to a market order
-            stop_price: the stop-loss price, if None defaults to an immediate (regular) order
             time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
 
-        Returns: Order object
+        Returns: CryptoOrder object
         """
         return self.place_crypto_order(symbol=symbol,
                                 quantity=quantity,
@@ -515,10 +514,9 @@ class Trader:
             symbol: the stock symbol
             quantity: number of shares
             price: the limit price, if None defaults to a market order
-            stop_price: the stop-loss price, if None defaults to an immediate (regular) order
             time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
 
-        Returns: Order object
+        Returns: CryptoOrder object
         """
         return self.place_crypto_order(symbol=symbol,
                                 quantity=quantity,
