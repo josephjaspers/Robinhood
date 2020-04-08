@@ -44,7 +44,7 @@ trader = Trader.load_session('filename')
  - instrument(symbol: str)
  - quote (symbol: str)           # works for both crypto and regular stocks 
  - orderbook(symbol: str)        # requires robinhood gold
- - watch_orderbook(symbol: str)  # actively watch the orderbook in (pretty formatted)        
+ - watch_orderbook(symbol: str)  # actively watch the orderbook (pretty format)
  - historical quotes(symbol: str)
 ```
 #### Account Data 
@@ -56,7 +56,6 @@ trader = Trader.load_session('filename')
  - order(order:Order)               # returns an updated order object from an existing Order 
  - crypto_order(order: CryptoOrder) # returns an updated crypto order object from an existing CryptoOrder object 
  - portfolios()
- - order_history()
  - dividends()
  ```
 #### Trading 
@@ -95,25 +94,28 @@ trader = Trader.load_session('filename')
        
  - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been canceled). (Robinhood response does not indicate if the order was successfully canceled) 
  ```
+ - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
+ - supplying `price` and any `stop` argument will create a `stop-limit` order of the expected type. 
+ - USE TRAILING_STOPS WITH CAUTION, RH has recently been changing their implementation of trailing-stops which has periodically broken this API. PLEASE ENSURE YOUR ORDERS ARE EXECUTING BEFORE USAGE. (I have seen orders being submitted but will get stuck in "pending"). (Currently these stops are working, but I do not know when RH will update their API).   
  - For crypto-currencies, decimal quantities are supported. 
 
 ### The Quotes 
 
  - The quote object wraps a robinhood quote json and supplies convience functionality to it. 
  - to access the underlying json use `._dict`
- - Each property will on-the-fly convert to float, 
+ - Each property will on-the-fly convert to the apropriate type, 
    this ensures that access to the original value is always available, (in case float conversion causes a loss of precision) 
 
 #### Regular Quote 
 ##### Properties
 ```python
- - ask -> float
- - bid -> float
- - last_trade_price -> float
- - previous_close -> float
+ - ask                     -> float
+ - bid                     -> float
+ - last_trade_price        -> float
+ - previous_close          -> float
  - adjusted_previous_close -> float
- - ask_size -> int
- - bid_size -> int
+ - ask_size                -> int
+ - bid_size                -> int
 ```
 #### The CryptoQuote Object 
 ##### Properties
@@ -128,7 +130,8 @@ trader = Trader.load_session('filename')
 ### The Orders 
  - The order objects wrap the order json and supply convienace definitions for basic functionality 
  - Properties are converted to their apropriate type on the fly, use `_dict`, to access the underlying json. 
- - Note, their are slight differences between crypto/regular orders. 
+ - Note, there are slight differences between crypto/regular orders. 
+ - Orders created the Trader method `orders` or `crypto_orders` will not have the 'time' property. 
 
 ##### Methods 
 ```python
