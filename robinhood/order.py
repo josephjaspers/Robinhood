@@ -57,14 +57,14 @@ class Order(OrderBase):
 		"""Updates self and checks if the order has been filled"""
 		return self.status(update) == 'filled'
 
-	def canceled(self, update=True):
-		"""Updates self and checks if the order has been canceled"""
-		return self.status(update) == 'canceled'
+	def cancelled(self, update=True):
+		"""Updates self and checks if the order has been cancelled"""
+		return self.status(update) == 'cancelled'
 
 	def status(self, update=True):
-		"""Returns state of order, return values are 'filled', 'canceled', 'pending', 'queued'?"""
+		"""Returns state of order, return values are 'filled', 'cancelled', 'pending', 'queued'?"""
 		status = self._dict['state']
-		if update and status not in ['canceled', 'filled']:
+		if update and status not in ['cancelled', 'filled']:
 			self.update()
 			status = self._dict['state']
 		return status

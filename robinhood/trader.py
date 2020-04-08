@@ -25,8 +25,6 @@ class Trader:
     ###########################################################################
 
     def __init__(self, username=None, password=None):
-        self._placed_orders = []
-        self._placed_crypto_orders = []
         self.auth_token = None
         self.session = requests.session()
         self.session.proxies = getproxies()
@@ -128,7 +126,9 @@ class Trader:
         self.session.headers['Accept-Encoding'] = 'gzip, deflate, br'
         self.session.headers['Accept-Language'] = 'en-US,en;q=0.9'
         res = self.session.post(*args, timeout=timeout, **kwargs)
-        res.raise_for_status()
+        if not res:
+            print(res.text)
+            res.raise_for_status()
         return res.json() if asjson else res
 
     ###########################################################################
@@ -457,7 +457,7 @@ class Trader:
                     }
                 }
 
-                modifier = -1 if side == 'sell' else 1
+                modifier = 1 if side == 'sell' else -1
                 stop_price = quote + trailing_stop_amount * modifier
                 payload['stop_price'] = self._fprice(stop_price)
             else:
@@ -470,7 +470,7 @@ class Trader:
                 }
 
                 trailing_stop_ratio = trailing_stop_percent/100
-                if side == 'buy': trailing_stop_ratio += 1
+                if side == 'sell': trailing_stop_ratio += 1
                 payload['stop_price'] = self._fprice(quote * trailing_stop_ratio)
 
             payload['trailing_peg'] = trailing_peg
@@ -478,17 +478,7 @@ class Trader:
         payload = {k: v for k, v in payload.items() if v}
         payload = dumps(payload)
         json = self._req_post(endpoints.orders(), data=payload)
-        order = Order(self, json)
-        self._placed_orders.append(order)
-        return order
-
-    @@property
-    def last_order(self):
-        if not len(self._placed_orders):
-            return None
-
-        return self._placed_orders[-1]
-
+        return Order(self, json)
 
     def buy_crypto(self,
             symbol,
@@ -563,16 +553,7 @@ class Trader:
         payload = {k: v for k, v in payload.items() if v}
         payload = dumps(payload)
         json = self._req_post(crypto_endpoints.orders(), data=payload)
-        order = CryptoOrder(self, json)
-        self._placed_crypto_orders.append(order)
-        return order
-
-    @@property
-    def last_crypto_order(self):
-        if not len(self._placed_crypto_orders):
-            return None
-        
-        return self._placed_crypto_orders[-1]
+        return CryptoOrder(self, json)
 
     ###########################################################################
     #                               CANCEL ORDER
