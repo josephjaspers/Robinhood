@@ -153,7 +153,7 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
  - The order objects wrap the order json and supply convenience definitions for basic functionality 
  - Properties are converted to their apropriate type on the fly, use `_dict`, to access the underlying json. 
  - Note, there are slight differences between crypto/regular orders. 
- - Orders created the Trader method `orders` or `crypto_orders` will not have the 'time' property. 
+ - Orders created via Trader methods `orders` and `crypto_orders` will not have the 'time' property. 
 
 ##### Methods 
 ```python
