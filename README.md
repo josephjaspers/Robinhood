@@ -98,7 +98,7 @@ trader = Trader.load_session('filename')
  ```
  - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
  - supplying `price` and any `stop` argument will create a `stop-limit` order of the expected type. 
- - USE TRAILING_STOPS WITH CAUTION, RH has recently been changing their implementation of trailing-stops which has periodically broken this API. PLEASE ENSURE YOUR ORDERS ARE EXECUTING BEFORE USAGE. (I have seen orders being submitted but will get stuck in "pending"). (Currently these stops are working, but I do not know when RH will update their API).   
+ - USE TRAILING_STOPS WITH CAUTION, RH has recently been changing their implementation of trailing-stops which has periodically broken this API. PLEASE ENSURE YOUR ORDERS ARE EXECUTING BEFORE USAGE. (I have seen trailing-stop orders being submitted but will get stuck in "pending"). (Currently these stops are working, but I do not know when RH will update their API).   
  - For crypto-currencies, decimal quantities are supported. 
 
 ### The Quotes 
