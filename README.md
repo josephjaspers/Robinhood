@@ -21,7 +21,8 @@ Changelist:
 from robinhood import Trader
 trader = Trader('username', 'password') 
 ```
-Logging in will prompt for an access_code which may be submitted  via a console prompt. 
+Logging in will prompt for an access_code which may be submitted  via a console prompt.   
+Note: You must have 2-factor authentication requried on your robinhood account. 
 ```python
 trader.save_session('filename')
 ```
@@ -79,7 +80,7 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
  - dividends()
  ```
 #### Trading 
-```
+```python
  - buy(  
        symbol: str,                   # the stock symbol
        quantity: number,              # number of shares
@@ -104,19 +105,19 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
        symbol: str,                   # the stock symbol
        quantity: number,              # number of shares
        price: float = None,           # limit order if specified
-       time_in_force = None)          # defaults to gfd (good for day)
+       time_in_force = None)          # defaults to gtc (good till cancelled)
 
  - sell_crypto(  
        symbol: str,                   # the stock symbol
        quantity: number,              # number of shares
        price: float = None,           # limit order if specified
-       time_in_force = None)          # defaults to gfd (good for day)
+       time_in_force = None)          # defaults to gtc (good till cancelled)
        
  - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been cancelled). (Robinhood response does not indicate if the order was successfully cancelled) 
  ```
  - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
  - supplying `price` and `stop` argument will create a `stop-limit` order. 
- - `trailing_stop_percent`, and `trailing_stop_amount` are not compatible with `price`
+ - `trailing_stop_percent`, and `trailing_stop_amount` are not compatible with `price` (RH does not support trailing-limit orders) 
  - USE TRAILING_STOPS WITH CAUTION, RH has recently been changing their implementation of trailing-stops which has periodically broken this API. PLEASE ENSURE YOUR ORDERS ARE EXECUTING BEFORE USAGE. (I have seen trailing-stop orders being submitted but will get stuck in "pending"). (Currently these stops are working, but I do not know when RH will update their API).   
  - For crypto-currencies, decimal quantities are supported. 
 
