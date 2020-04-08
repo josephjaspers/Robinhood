@@ -25,6 +25,7 @@ class Trader:
     ###########################################################################
 
     def __init__(self, username=None, password=None):
+        self._placed_orders = []
         self.auth_token = None
         self.session = requests.session()
         self.session.proxies = getproxies()
@@ -369,13 +370,14 @@ class Trader:
     def place_order(self,
                     symbol,
                     quantity,
+                    price,
+                    stop_price,
+                    trailing_stop_percent,
+                    trailing_stop_amount,
                     side,
-                    price=None,
-                    trailing_stop_percent=None,
-                    trailing_stop_amount=None,
-                    stop_price=None,
-                    time_in_force=None,
-                    extended_hours=None):
+                    time_in_force,
+                    extended_hours):
+
         """
         Args:
             symbol: the stock symbol
@@ -409,46 +411,9 @@ class Trader:
                "updated_at":"2020-03-31T16:27:40.866278-04:00"
             }
         """
-        symbol = symbol.upper()
-
-        if symbol + 'USD' in _crypto_pairs:
-            func = self._place_crypto_order_detail
-            instrument = symbol + 'USD'
-            if not time_in_force: time_in_force = 'gtc'
-            assert(time_in_force == 'gtc')
-            order_type = CryptoOrder
-        else:
-            func = self._place_order_detail
-            instrument = self.instrument(symbol)
-            if not time_in_force: time_in_force = 'gfd'
-            order_type = Order
-
-        assert(side in ['buy', 'sell'])
-        assert(time_in_force in ['gfd', 'gtc'])
-
-        json_result = func(
-            instrument,
-            quantity,
-            price,
-            stop_price,
-            trailing_stop_percent,
-            trailing_stop_amount,
-            side,
-            time_in_force,
-            extended_hours)
-
-        return order_type(self, json_result)
-
-    def _place_order_detail(self,
-                            instrument,
-                            quantity,
-                            price,
-                            stop_price,
-                            trailing_stop_percent,
-                            trailing_stop_amount,
-                            side,
-                            time_in_force,
-                            extended_hours):
+        if not time_in_force: time_in_force = 'gfd'
+        assert (side in ['buy', 'sell'])
+        assert (time_in_force in ['gfd', 'gtc'])
 
         stop_args = [trailing_stop_amount, trailing_stop_percent, stop_price]
         if sum([bool(sa) for sa in stop_args]) > 1:
@@ -459,6 +424,8 @@ class Trader:
         is_stop = stop_price or is_trailing_stop
         trigger = 'stop' if is_stop else 'immediate'
         order = 'limit' if price else 'market'
+        symbol = symbol.upper()
+        instrument = self.instrument(symbol)
 
         if not (is_trailing_stop and side == 'sell') and not price:
             price = self._fprice(self.quote(instrument['symbol']).ask)
@@ -491,7 +458,6 @@ class Trader:
 
                 modifier = -1 if side == 'sell' else 1
                 stop_price = quote + trailing_stop_amount * modifier
-                print(quote, trailing_stop_amount, modifier)
                 payload['stop_price'] = self._fprice(stop_price)
             else:
                 if not isinstance(trailing_stop_percent, int):
@@ -508,37 +474,68 @@ class Trader:
 
             payload['trailing_peg'] = trailing_peg
 
-        payload = {k:v for k,v in payload.items() if v}
+        payload = {k: v for k, v in payload.items() if v}
         payload = dumps(payload)
-        return self._req_post(endpoints.orders(), data=payload)
+        json = self._req_post(endpoints.orders(), data=payload)
 
-    def _place_crypto_order_detail(self,
-                                   symbol,
-                                   quantity,
-                                   price,
-                                   stop_price,
-                                   trailing_stop_percent,
-                                   trailing_stop_amount,
-                                   side,
-                                   time_in_force,
-                                   extended_hours):
+        return Order(self, json)
 
-        if extended_hours is not None:
-            raise Exception("extended hours is not a valid argument for crypto")
+    def buy_crypto(self,
+            symbol,
+            quantity,
+            price=None,
+            time_in_force=None):
+        """
+        Args:
+            symbol: the stock symbol
+            quantity: number of shares
+            price: the limit price, if None defaults to a market order
+            stop_price: the stop-loss price, if None defaults to an immediate (regular) order
+            time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
 
-        if trailing_stop_amount or trailing_stop_percent or stop_price:
-            raise Exception(
-                "trailing_stop_amount, trailing_stop_percent, and stop_price, "
-                "are not supported arguments for crypto-currencies")
+        Returns: Order object
+        """
+        return self.place_crypto_order(symbol=symbol,
+                                quantity=quantity,
+                                price=price,
+                                side='buy',
+                                time_in_force=time_in_force)
 
-        trigger = 'stop' if stop_price else 'immediate'
+    def sell_crypto(self,
+            symbol,
+            quantity,
+            price=None,
+            time_in_force=None):
+        """
+        Args:
+            symbol: the stock symbol
+            quantity: number of shares
+            price: the limit price, if None defaults to a market order
+            stop_price: the stop-loss price, if None defaults to an immediate (regular) order
+            time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
+
+        Returns: Order object
+        """
+        return self.place_crypto_order(symbol=symbol,
+                                quantity=quantity,
+                                price=price,
+                                side='sell',
+                                time_in_force=time_in_force)
+
+    def place_crypto_order(self,
+                           symbol,
+                           quantity,
+                           price,
+                           side,
+                           time_in_force):
+
+        symbol = symbol.upper() + 'USD'
         order = 'limit' if price else 'market'
         crypto_id = _crypto_pairs[symbol]
 
-        if not price:
-            price = self.quote(symbol).ask
+        if not price: price = self.quote(symbol).ask
+        if not time_in_force: time_in_force = 'gtc'
 
-        stop_price = self._fprice(stop_price)
         price = self._fprice(price)
         account_id = self.crypto_account()['id']
 
@@ -550,15 +547,13 @@ class Trader:
             "currency_pair_id": crypto_id,
             'price': price,
             'ref_id': uuid.uuid4().hex,
-            "time_in_force": time_in_force,
-            "trigger": trigger,
-            'stop_price': stop_price
+            "time_in_force": time_in_force
         }
 
-        # payload must use json.dumps (unsure why)
-        payload = {k:v for k,v in payload.items() if v}
+        payload = {k: v for k, v in payload.items() if v}
         payload = dumps(payload)
-        return self._req_post(crypto_endpoints.orders(), data=payload)
+        json = self._req_post(crypto_endpoints.orders(), data=payload)
+        return CryptoOrder(self, json)
 
     ###########################################################################
     #                               CANCEL ORDER
