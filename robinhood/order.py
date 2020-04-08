@@ -45,7 +45,7 @@ class Order(OrderBase):
 		update_dict = self._trader.order(self._dict)._dict
 
 		# historical orders will not have time,
-		# orders made during this session will have a pd.Timestamp added to them  
+		# orders made during this session will have a pd.Timestamp added to them
 		if 'time' in self:
 			update_dict['time'] = self.time
 
@@ -59,14 +59,14 @@ class Order(OrderBase):
 		"""Updates self and checks if the order has been filled"""
 		return self.status(update) == 'filled'
 
-	def cancelled(self, update=True):
+	def canceled(self, update=True):
 		"""Updates self and checks if the order has been cancelled"""
-		return self.status(update) == 'cancelled'
+		return self.status(update) in ['cancelled', 'canceled']
 
 	def status(self, update=True):
 		"""Returns state of order, return values are 'filled', 'cancelled', 'pending', 'queued'?"""
 		status = self._dict['state']
-		if update and status not in ['cancelled', 'filled']:
+		if update and status not in ['cancelled', 'canceled', 'filled']:
 			self.update()
 			status = self._dict['state']
 		return status

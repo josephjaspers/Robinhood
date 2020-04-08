@@ -40,7 +40,7 @@ order = trader.buy('aapl', quantity=1)
 if not order.filled():
   order.cancel()
 
-if order.cancelled():
+if order.canceled():
   quote = trader.quote('aapl')
   if quote.ask < 250.0: 
     order = trader.buy('aapl', quantity=1, price=250.0) # limit order
@@ -105,15 +105,15 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
        symbol: str,                   # the stock symbol
        quantity: number,              # number of shares
        price: float = None,           # limit order if specified
-       time_in_force = None)          # defaults to gtc (good till cancelled)
+       time_in_force = None)          # defaults to gtc (good till canceled)
 
  - sell_crypto(  
        symbol: str,                   # the stock symbol
        quantity: number,              # number of shares
        price: float = None,           # limit order if specified
-       time_in_force = None)          # defaults to gtc (good till cancelled)
+       time_in_force = None)          # defaults to gtc (good till canceled)
        
- - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been cancelled). (Robinhood response does not indicate if the order was successfully cancelled) 
+ - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been canceled). (Robinhood response does not indicate if the order was successfully canceled) 
  ```
  - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
  - supplying `price` and `stop` argument will create a `stop-limit` order. 
@@ -160,7 +160,7 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
  - update()                              # updates the internal `_dict` by making a request to RH 
  - cancel()                              # attempts to cancel the order,success does not indicate successful cancelation
  - filled  (update: bool = True) -> bool # returns if the order has been filled, if update is true, will call update prior.
- - cancelled(update: bool = True) -> bool # returns if the order has been cancelled, if update is true, will call update prior.
+ - canceled(update: bool = True) -> bool # returns if the order has been canceled, if update is true, will call update prior.
  - status  (update: bool = True) -> str  # returns the current status of the order
 ```
 ##### Properties 
