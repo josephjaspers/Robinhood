@@ -73,7 +73,7 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
  - account()
  - crypto_account()
  - orders()                         # returns order history 
- - crytpo_orders()                  # returns crypto order history 
+ - crypto_orders()                  # returns crypto order history 
  - order(order:Order)               # returns an updated order object from an existing Order 
  - crypto_order(order: CryptoOrder) # returns an updated crypto order object from an existing CryptoOrder object 
  - portfolios()
