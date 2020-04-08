@@ -422,6 +422,10 @@ class Trader:
                             "(stop_price, trailing_stop_price, trailing_stop_percent)")
 
         is_trailing_stop = any([trailing_stop_percent, trailing_stop_amount])
+
+        if is_trailing_stop and price:
+            raise Exception("Trailing stop orders and `limit` are not compatible")
+
         is_stop = stop_price or is_trailing_stop
         trigger = 'stop' if is_stop else 'immediate'
         order = 'limit' if price else 'market'
@@ -429,7 +433,7 @@ class Trader:
         instrument = self.instrument(symbol)
 
         if not (is_trailing_stop and side == 'sell') and not price:
-            price = self._fprice(self.quote(instrument['symbol']).ask)
+            price = self._fprice(self.quote(instrument['symbol']).last_trade_price)
 
         payload = {
             "account": self.account()["url"],
@@ -446,7 +450,7 @@ class Trader:
         }
 
         if trailing_stop_amount or trailing_stop_percent:
-            quote = self.quote(instrument['symbol']).ask
+            quote = self.quote(instrument['symbol']).mark
 
             if trailing_stop_amount:
                 trailing_peg = {
@@ -533,7 +537,7 @@ class Trader:
         order = 'limit' if price else 'market'
         crypto_id = _crypto_pairs[symbol]
 
-        if not price: price = self.quote(symbol).ask
+        if not price: price = self.quote(symbol).mark
         if not time_in_force: time_in_force = 'gtc'
 
         price = self._fprice(price)
