@@ -4,13 +4,14 @@ from datetime import datetime
 
 
 class OrderBase(ConstDict):
-	def __init__(self, order: dict):
-		order['time'] = timestamp_now()
+	def __init__(self, order: dict, init_local_time=True):
+		if init_local_time:
+			order['time'] = timestamp_now()
 		ConstDict.__init__(self, order)
 
 	@property
 	def time(self) -> datetime:
-		return self._dict['time']
+		return self._dict['time'] if 'time' in self._dict else None
 
 
 class Order(OrderBase):
@@ -41,7 +42,12 @@ class Order(OrderBase):
 
 	def update(self):
 		"""Update this order's information by pinging robinhood"""
-		self._dict = self._trader.order(self._dict)._dict
+		update_dict = self._trader.order(self._dict)._dict
+
+		if 'time' in self:
+			update_dict['time'] = self.time
+
+		self._dict = update_dict
 
 	def cancel(self):
 		"""Cancel this order, does not check if ordered has been executed"""

@@ -84,6 +84,14 @@ def quotes():
     return api_url + "/quotes/"
 
 
+# def marketdata_quotes(id):
+#     return api_url + f'/marketdata/quotes/{id}/'
+
+
+def orderbook(id):
+    return api_url + f'/marketdata/pricebook/snapshots/{id}/'
+
+
 def historicals():
     return api_url + "/quotes/historicals/"
 

@@ -19,7 +19,7 @@ from json import dumps
 class Trader:
 
     client_id = "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS"
-
+    request_timeout = 15
     ###########################################################################
     #                       Logging in and initializing
     ###########################################################################
@@ -79,7 +79,7 @@ class Trader:
         else:
             payload['challenge_type'] = 'sms'
 
-        res = self.session.post(endpoints.login(), data=payload, timeout=15, verify=True)
+        res = self.session.post(endpoints.login(), data=payload, timeout=self.request_timeout, verify=True)
         res.raise_for_status()
         data = res.json()
 
@@ -106,7 +106,7 @@ class Trader:
             'client_id': self.client_id,
             'token': self.refresh_token
         }
-        res = self.session.post(endpoints.logout(), data=payload, timeout=15)
+        res = self.session.post(endpoints.logout(), data=payload, timeout=self.request_timeout)
         self.session.headers['Authorization'] = None
         self.auth_token = None
         res.raise_for_status()
@@ -162,13 +162,48 @@ class Trader:
     def quote(self, symbol):
         """Fetch stock quote"""
         symbol = symbol.upper()
+
         crypto_symbol = symbol + 'USD'
+        if crypto_symbol not in _crypto_pairs:
+            crypto_symbol = symbol
+
         if crypto_symbol in _crypto_pairs:
             url = str(crypto_endpoints.quotes(_crypto_pairs[crypto_symbol]))
             return CryptoQuote(self._req_get(url))
 
         url = str(endpoints.quotes()) + f"?symbols={symbol}"
         return Quote(self._req_get(url)['results'][0])
+
+    def orderbook(self, symbol):
+        """Returns the orderbook json, only valid for gold users, not supported for crypto"""
+        symbol = symbol.upper()
+        instrument_id = self.instrument(symbol)['id']
+        return self._req_get(endpoints.orderbook(instrument_id))
+
+    def watch_orderbook(self, symbol, tick_duration=1, book_view_size=15):
+        from ...common import _get_console_color, _set_console_color
+        import time
+
+        def view_book_string(bookhalf, color):
+            s = _get_console_color(color)
+            for record in bookhalf:
+                print(record)
+                s += record['price']['amount'] + f' {record["quantity"]}\n'
+            return s
+
+        def truncate(bk):
+            if book_view_size and len(bk) > book_view_size:
+                return bk[0:book_view_size]
+            return bk
+
+        while True:
+            book = self.orderbook(symbol)
+            book_str = '\033c'
+            book_str += view_book_string(reversed(truncate(book['asks'])), 'green')
+            book_str += view_book_string(truncate(book['bids']), 'red')
+            print(book_str)
+            _set_console_color('white')
+            time.sleep(tick_duration)
 
     def historical_quotes(self, symbol, interval, span, bounds='regular'):
         """Fetch historical data for stock
@@ -255,7 +290,7 @@ class Trader:
             trailing_stop_percent=None,
             trailing_stop_amount=None,
             time_in_force=None,
-            extended_hours=False):
+            extended_hours=None):
         """
         Args:
             symbol: the stock symbol
@@ -284,7 +319,7 @@ class Trader:
              trailing_stop_percent=None,
              trailing_stop_amount=None,
              time_in_force=None,
-             extended_hours=False):
+             extended_hours=None):
         """
         Args:
             symbol: the stock symbol
@@ -505,7 +540,7 @@ class Trader:
 
         stop_price = self._fprice(stop_price)
         price = self._fprice(price)
-        account_id = self.portfolio()['account_id']
+        account_id = self.crypto_account()['id']
 
         payload = {
             "type": order,
