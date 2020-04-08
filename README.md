@@ -30,6 +30,24 @@ Saves your current robinhood session for skipping logging in (until the cookie e
 ```python
 trader = Trader.load_session('filename')
 ```
+### Trading (Small example) 
+```python 
+from robinhood import Trader
+trader = Trader.load_session('filename')
+order = trader.buy('aapl', quantity=1)
+
+if not order.filled():
+  order.cancel()
+
+if order.cancelled():
+  quote = trader.quote('aapl')
+  if quote.ask < 250.0: 
+    order = trader.buy('aapl', quantity=1, price=250.0) # limit order
+  else:
+    order = trader.buy('aapl', quantity=1, price=260.0, stop_price=255.0)  # stop-limit order 
+trader.sell('aapl', quantity=1, trailing_stop_amount=5)
+```
+
 
 ### Trader methods 
 
@@ -94,10 +112,11 @@ trader = Trader.load_session('filename')
        price: float = None,           # limit order if specified
        time_in_force = None)          # defaults to gfd (good for day)
        
- - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been canceled). (Robinhood response does not indicate if the order was successfully canceled) 
+ - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been cancelled). (Robinhood response does not indicate if the order was successfully cancelled) 
  ```
  - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
- - supplying `price` and any `stop` argument will create a `stop-limit` order of the expected type. 
+ - supplying `price` and `stop` argument will create a `stop-limit` order. 
+ - `trailing_stop_percent`, and `trailing_stop_amount` are not compatible with `price`
  - USE TRAILING_STOPS WITH CAUTION, RH has recently been changing their implementation of trailing-stops which has periodically broken this API. PLEASE ENSURE YOUR ORDERS ARE EXECUTING BEFORE USAGE. (I have seen trailing-stop orders being submitted but will get stuck in "pending"). (Currently these stops are working, but I do not know when RH will update their API).   
  - For crypto-currencies, decimal quantities are supported. 
 
@@ -140,7 +159,7 @@ trader = Trader.load_session('filename')
  - update()                              # updates the internal `_dict` by making a request to RH 
  - cancel()                              # attempts to cancel the order,success does not indicate successful cancelation
  - filled  (update: bool = True) -> bool # returns if the order has been filled, if update is true, will call update prior.
- - canceled(update: bool = True) -> bool # returns if the order has been canceled, if update is true, will call update prior.
+ - cancelled(update: bool = True) -> bool # returns if the order has been cancelled, if update is true, will call update prior.
  - status  (update: bool = True) -> str  # returns the current status of the order
 ```
 ##### Properties 
