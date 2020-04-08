@@ -6,6 +6,8 @@ However this project is considered to be a seperate project
 as it contains significant changes. 
 
 Changelist:  
+ + Implemented Quote/Order objects for user-convienance 
+ + Added certain Trader features to the Order object for convience (update, canceling, querying state) 
  + Fixed/Added support for quoting crypto currencies
  + Fixed/Added support for buying/selling crypto currencies
  + Removed/Changed buy/sell interface 
