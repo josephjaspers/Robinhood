@@ -486,11 +486,13 @@ class Trader:
 
     def buy_crypto(self,
             symbol,
-            quantity,
+            price_quantity=None,
+            quantity=None,
             price=None,
             time_in_force=None):
         """
         Args:
+            price_quantity: Buy an amount of bitcoin equal to this dollar amount
             symbol: the stock symbol
             quantity: number of shares
             price: the limit price, if None defaults to a market order
@@ -499,18 +501,21 @@ class Trader:
         Returns: CryptoOrder object
         """
         return self.place_crypto_order(symbol=symbol,
-                                quantity=quantity,
-                                price=price,
-                                side='buy',
-                                time_in_force=time_in_force)
+                                       price_quantity=price_quantity,
+                                       quantity=quantity,
+                                       price=price,
+                                       side='buy',
+                                       time_in_force=time_in_force)
 
     def sell_crypto(self,
             symbol,
-            quantity,
+            price_quantity=None,
+            quantity=None,
             price=None,
             time_in_force=None):
         """
         Args:
+            price_quantity: Sell an amount of bitcoin equal to this dollar amount
             symbol: the stock symbol
             quantity: number of shares
             price: the limit price, if None defaults to a market order
@@ -519,24 +524,29 @@ class Trader:
         Returns: CryptoOrder object
         """
         return self.place_crypto_order(symbol=symbol,
-                                quantity=quantity,
-                                price=price,
-                                side='sell',
-                                time_in_force=time_in_force)
+                                       price_quantity=price_quantity,
+                                       quantity=quantity,
+                                       price=price,
+                                       side='sell',
+                                       time_in_force=time_in_force)
 
     def place_crypto_order(self,
                            symbol,
-                           quantity,
-                           price,
-                           side,
-                           time_in_force):
+                           price_quantity,
+                           quantity=None,
+                           price=None,
+                           side=None,
+                           time_in_force=None):
 
+        assert bool(quantity) ^ bool(price_quantity)
         symbol = symbol.upper() + 'USD'
         order = 'limit' if price else 'market'
         crypto_id = _crypto_pairs[symbol]
 
-        if not price: price = self.quote(symbol).mark
         if not time_in_force: time_in_force = 'gtc'
+        if not price: price = self.quote(symbol).ask
+        if not quantity and price_quantity:
+            quantity = "{0:.8f}".format(price_quantity / price)
 
         price = self._fprice(price)
         account_id = self.crypto_account()['id']
