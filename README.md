@@ -47,8 +47,12 @@ if order.canceled():
   else:
     order = trader.buy('aapl', quantity=1, price=260.0, stop_price=255.0)  # stop-limit order 
 trader.sell('aapl', quantity=1, trailing_stop_amount=5)
-```
 
+dollar_amount = 500
+crypto_order = trader.buy_crypto('btc', dollar_amount)  # buy 500$ worth of bitcoin (market order)
+crypto_order = trader.sell_crypto('btc', dollar_amount, price=6850) # sell 500$ worth of bitcoin at 6850 (limit order)
+crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin at 6850 (limit order)
+```
 
 ### Trader methods 
 
@@ -103,18 +107,21 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
 
  - buy_crypto(  
        symbol: str,                   # the stock symbol
-       quantity: number,              # number of shares
+       price_quantity: float = None,  # buy a quantity of crypto of equal value to the given price_quantity,
+       quantity: number = None,       # number of shares
        price: float = None,           # limit order if specified
        time_in_force = None)          # defaults to gtc (good till canceled)
 
  - sell_crypto(  
        symbol: str,                   # the stock symbol
+       price_quantity: float = None,  # sell a quantity of crypto of equal value to the given price_quantity,
        quantity: number,              # number of shares
        price: float = None,           # limit order if specified
        time_in_force = None)          # defaults to gtc (good till canceled)
        
  - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been canceled). (Robinhood response does not indicate if the order was successfully canceled) 
  ```
+ - for buy_crypto/sell_crypto: 'price_quantity' is mutually exclusive with quantity. 
  - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
  - supplying `price` and `stop` argument will create a `stop-limit` order. 
  - `trailing_stop_percent`, and `trailing_stop_amount` are not compatible with `price` (RH does not support trailing-limit orders) 
