@@ -73,7 +73,7 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
  - account()
  - crypto_account()
  - orders()                         # returns order history 
- - crytpo_orders()                  # returns crypto order history 
+ - crypto_orders()                  # returns crypto order history 
  - order(order:Order)               # returns an updated order object from an existing Order 
  - crypto_order(order: CryptoOrder) # returns an updated crypto order object from an existing CryptoOrder object 
  - portfolios()
@@ -123,7 +123,7 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
 
 ### The Quotes 
 
- - The quote object wraps a robinhood quote json and supplies convience functionality to it. 
+ - The quote object wraps a robinhood quote json and supplies convenience functionality to it. 
  - to access the underlying json use `._dict`
  - Each property will on-the-fly convert to the apropriate type, 
    this ensures that access to the original value is always available, (in case float conversion causes a loss of precision) 
@@ -143,17 +143,17 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
 ##### Properties
 ```python
  - ask  -> float
- - bid  -> float
+ - bid  -> floatonv
  - mark -> float   # market_price
  - high -> float
  - low  -> float
  - open -> float 
 ```
 ### The Orders 
- - The order objects wrap the order json and supply convienace definitions for basic functionality 
+ - The order objects wrap the order json and supply convenience definitions for basic functionality 
  - Properties are converted to their apropriate type on the fly, use `_dict`, to access the underlying json. 
  - Note, there are slight differences between crypto/regular orders. 
- - Orders created the Trader method `orders` or `crypto_orders` will not have the 'time' property. 
+ - Orders created via Trader methods `orders` and `crypto_orders` will not have the 'time' property. 
 
 ##### Methods 
 ```python
