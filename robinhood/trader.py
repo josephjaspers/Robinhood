@@ -14,6 +14,7 @@ from . import crypto_endpoints
 from .crypto_endpoints import crypto_pairs as _crypto_pairs
 from six.moves.urllib.parse import unquote
 from json import dumps
+from .crypto_trader import CryptoTrader
 
 
 class Trader:
@@ -25,6 +26,7 @@ class Trader:
     ###########################################################################
 
     def __init__(self, username=None, password=None):
+        self._crypto_trader = CryptoTrader(self)
         self.auth_token = None
         self.session = requests.session()
         self.session.proxies = getproxies()
@@ -130,6 +132,13 @@ class Trader:
             print(res.text)
             res.raise_for_status()
         return res.json() if asjson else res
+
+    ###########################################################################
+    #                               GET CRYPTO FUNCTIONS
+    ###########################################################################
+    @property
+    def crypto(self):
+        return self._crypto_trader
 
     ###########################################################################
     #                        SAVING AND LOADING SESSIONS
@@ -249,10 +258,6 @@ class Trader:
         res = self._req_get(endpoints.accounts())
         return res['results'][0]
 
-    def crypto_account(self):
-        res = self._req_get(crypto_endpoints.accounts())
-        return res['results'][0]
-
     def portfolio(self):
         """Returns the first portfolio result, current rb only supports 1 portfolio"""
         return self._req_get(endpoints.portfolios())['results'][0]
@@ -265,15 +270,6 @@ class Trader:
         order_id = order['id'] if isinstance(order, dict) else order
         json = self._req_get(endpoints.orders() + order_id)
         return Order(self, json, False)
-
-    def crypto_orders(self):
-        orders = self._req_get(crypto_endpoints.orders())['results']
-        return [CryptoOrder(self, order, False) for order in orders]
-
-    def crypto_order(self, order):
-        order_id = order['id'] if isinstance(order, dict) else order
-        json = self._req_get(crypto_endpoints.orders() + order_id)
-        return CryptoOrder(self, json, False)
 
     def dividends(self):
         return self._req_get(endpoints.orders())
@@ -483,89 +479,6 @@ class Trader:
         payload = dumps(payload)
         json = self._req_post(endpoints.orders(), data=payload)
         return Order(self, json)
-
-    def buy_crypto(self,
-            symbol,
-            price_quantity=None,
-            quantity=None,
-            price=None,
-            time_in_force=None):
-        """
-        Args:
-            price_quantity: Buy an amount of bitcoin equal to this dollar amount
-            symbol: the stock symbol
-            quantity: number of shares
-            price: the limit price, if None defaults to a market order
-            time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
-
-        Returns: CryptoOrder object
-        """
-        return self.place_crypto_order(symbol=symbol,
-                                       price_quantity=price_quantity,
-                                       quantity=quantity,
-                                       price=price,
-                                       side='buy',
-                                       time_in_force=time_in_force)
-
-    def sell_crypto(self,
-            symbol,
-            price_quantity=None,
-            quantity=None,
-            price=None,
-            time_in_force=None):
-        """
-        Args:
-            price_quantity: Sell an amount of bitcoin equal to this dollar amount
-            symbol: the stock symbol
-            quantity: number of shares
-            price: the limit price, if None defaults to a market order
-            time_in_force: 'gfd' or 'gtc', gfd: cancel end of day, gtc: cancel until specified
-
-        Returns: CryptoOrder object
-        """
-        return self.place_crypto_order(symbol=symbol,
-                                       price_quantity=price_quantity,
-                                       quantity=quantity,
-                                       price=price,
-                                       side='sell',
-                                       time_in_force=time_in_force)
-
-    def place_crypto_order(self,
-                           symbol,
-                           price_quantity,
-                           quantity=None,
-                           price=None,
-                           side=None,
-                           time_in_force=None):
-
-        assert bool(quantity) ^ bool(price_quantity)
-        symbol = symbol.upper() + 'USD'
-        order = 'limit' if price else 'market'
-        crypto_id = _crypto_pairs[symbol]
-
-        if not time_in_force: time_in_force = 'gtc'
-        if not price: price = self.quote(symbol).ask
-        if not quantity and price_quantity:
-            quantity = "{0:.8f}".format(price_quantity / price)
-
-        price = self._fprice(price)
-        account_id = self.crypto_account()['id']
-
-        payload = {
-            "type": order,
-            "side": side,
-            "quantity": quantity,
-            "account_id": account_id,
-            "currency_pair_id": crypto_id,
-            'price': price,
-            'ref_id': uuid.uuid4().hex,
-            "time_in_force": time_in_force
-        }
-
-        payload = {k: v for k, v in payload.items() if v}
-        payload = dumps(payload)
-        json = self._req_post(crypto_endpoints.orders(), data=payload)
-        return CryptoOrder(self, json)
 
     ###########################################################################
     #                               CANCEL ORDER
