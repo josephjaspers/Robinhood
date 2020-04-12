@@ -140,6 +140,7 @@ crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin 
 ```python
  - ask                     -> float
  - bid                     -> float
+ - mark                    -> float   # market_price or last_trade_price
  - last_trade_price        -> float
  - previous_close          -> float
  - adjusted_previous_close -> float
@@ -151,7 +152,6 @@ crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin 
 ```python
  - ask  -> float
  - bid  -> floatonv
- - mark -> float   # market_price
  - high -> float
  - low  -> float
  - open -> float 

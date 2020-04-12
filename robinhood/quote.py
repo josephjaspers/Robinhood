@@ -59,6 +59,10 @@ class Quote(QuoteBase):
 		return self._get_float('bid_price')
 
 	@property
+	def mark(self) -> float:
+		return self._get_float('last_trade_price')
+
+	@property
 	def last_trade_price(self) -> float:
 		return self._get_float('last_trade_price')
 

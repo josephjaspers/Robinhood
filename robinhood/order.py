@@ -113,7 +113,12 @@ class CryptoOrder(Order):
 		# TODO- can we find a way to query a single crypto-order?
 		order_id = self._dict['id']
 		orders = self._trader.crypto_orders()
-		self._dict = next(order for order in orders if order['id'] == order_id)
+		crypto_order = next(order for order in orders if order['id'] == order_id)
+		update_dict = crypto_order._dict
+		if self.time:
+			update_dict['time'] = self.time
+
+		self._dict = update_dict
 
 	def status(self, update=True):
 		if update:
