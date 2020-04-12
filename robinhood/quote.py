@@ -63,10 +63,6 @@ class Quote(QuoteBase):
 		return self._get_float('last_trade_price')
 
 	@property
-	def last_trade_price(self) -> float:
-		return self._get_float('last_trade_price')
-
-	@property
 	def previous_close(self) -> float:
 		return self._get_float('last_trade_price')
 

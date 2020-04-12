@@ -1,5 +1,5 @@
-from .order import Order, CryptoOrder
-from .quote import Quote, CryptoQuote
+from .order import Order
+from .quote import Quote
 
 from six.moves.urllib.request import getproxies
 from six.moves import input
@@ -10,8 +10,6 @@ import uuid
 import pickle
 
 from . import endpoints
-from . import crypto_endpoints
-from .crypto_endpoints import crypto_pairs as _crypto_pairs
 from six.moves.urllib.parse import unquote
 from json import dumps
 from .crypto_trader import CryptoTrader
@@ -173,15 +171,6 @@ class Trader:
     def quote(self, symbol):
         """Fetch stock quote"""
         symbol = symbol.upper()
-
-        crypto_symbol = symbol + 'USD'
-        if crypto_symbol not in _crypto_pairs:
-            crypto_symbol = symbol
-
-        if crypto_symbol in _crypto_pairs:
-            url = str(crypto_endpoints.quotes(_crypto_pairs[crypto_symbol]))
-            return CryptoQuote(self._req_get(url))
-
         url = str(endpoints.quotes()) + f"?symbols={symbol}"
         return Quote(self._req_get(url)['results'][0])
 
@@ -233,10 +222,6 @@ class Trader:
             Returns:
                 (:obj:`dict`) values returned from `historicals` endpoint
         """
-        crypto_symbol = symbol.upper() + 'USD'
-        if crypto_symbol in _crypto_pairs:
-            raise NotImplemented("historical quotes is not supported for crypto-currencies")
-
         symbol = symbol if isinstance(symbol, list) else [symbol]
         assert(bounds in ['immediate', 'regular'])
 

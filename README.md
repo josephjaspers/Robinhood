@@ -48,17 +48,29 @@ if order.canceled():
     order = trader.buy('aapl', quantity=1, price=260.0, stop_price=255.0)  # stop-limit order 
 trader.sell('aapl', quantity=1, trailing_stop_amount=5)
 
+
+# crypto trading:
+# buying and selling crypto is accessed via the 'crypto' property of the trader object
+# (This was added as there is both a "neo" stock and a "neo" crytpo currency)
+
 dollar_amount = 500
-crypto_order = trader.buy_crypto('btc', dollar_amount)  # buy 500$ worth of bitcoin (market order)
-crypto_order = trader.sell_crypto('btc', dollar_amount, price=6850) # sell 500$ worth of bitcoin at 6850 (limit order)
-crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin at 6850 (limit order)
+crypto_order = trader.crypto.buy('btc', dollar_amount)  # buy 500$ worth of bitcoin (market order)
+crypto_order = trader.crypto.sell('btc', dollar_amount, price=6850) # sell 500$ worth of bitcoin at 6850 (limit order)
+crypto_order = trader.crypto.buy('btc', quantity=1, price=6850)  sell 1 bitcoin at 6850 (limit order)
+
+# optionally you may do something like for sake of convienance: 
+trader = trader.crypto 
+trader.buy('btc', dollar_amount)  
+trader.sell('btc', dollar_amount, price=6850)
+trader.buy('btc', quantity=1, price=6850)
+
 ```
 
 ### Trader methods 
 
 #### Logging in and Sessions
 ```
- - login(username: str = None, password: str = None)
+ - login(username: str = one.buy, password: str = None)
  - logout()
  - save_session(session_name: str)
  - load_session(session_name: str) @staticmethod 
@@ -77,9 +89,7 @@ crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin 
  - account()
  - crypto_account()
  - orders()                         # returns order history 
- - crypto_orders()                  # returns crypto order history 
  - order(order:Order)               # returns an updated order object from an existing Order 
- - crypto_order(order: CryptoOrder) # returns an updated crypto order object from an existing CryptoOrder object 
  - portfolios()
  - dividends()
  ```
@@ -105,14 +115,16 @@ crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin 
        time_in_force = None,         # defaults to gfd (good for day)
        extended_hours = None)        # defaults to False if not suppplied 
 
- - buy_crypto(  
+# Crypto buy/sell
+
+ - buy(  
        symbol: str,                   # the stock symbol
        price_quantity: float = None,  # buy a quantity of crypto of equal value to the given price_quantity,
        quantity: number = None,       # number of shares
        price: float = None,           # limit order if specified
        time_in_force = None)          # defaults to gtc (good till canceled)
 
- - sell_crypto(  
+ - sell(  
        symbol: str,                   # the stock symbol
        price_quantity: float = None,  # sell a quantity of crypto of equal value to the given price_quantity,
        quantity: number,              # number of shares
@@ -140,8 +152,7 @@ crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin 
 ```python
  - ask                     -> float
  - bid                     -> float
- - mark                    -> float   # market_price or last_trade_price
- - last_trade_price        -> float
+ - mark                    -> float   # market_price or last_trade_price (regular stocks json contains a "last_trade_price", crypto json contains a "mark_price" 
  - previous_close          -> float
  - adjusted_previous_close -> float
  - ask_size                -> int
@@ -151,7 +162,7 @@ crypto_order = trader.buy_crypto('btc', quantity=1, price=6850)  sell 1 bitcoin 
 ##### Properties
 ```python
  - ask  -> float
- - bid  -> floatonv
+ - bid  -> float
  - high -> float
  - low  -> float
  - open -> float 
