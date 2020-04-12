@@ -51,19 +51,18 @@ trader.sell('aapl', quantity=1, trailing_stop_amount=5)
 
 # crypto trading:
 # buying and selling crypto is accessed via the 'crypto' property of the trader object
-# (This was added as there is both a "neo" stock and a "neo" crytpo currency)
+# (This was added as there is both a "neo" stock and a "neo" crypto currency)
 
 dollar_amount = 500
-crypto_order = trader.crypto.buy('btc', dollar_amount)  # buy 500$ worth of bitcoin (market order)
+crypto_order = trader.crypto.buy('btc', dollar_amount)              # buy 500$ worth of bitcoin (market order)
 crypto_order = trader.crypto.sell('btc', dollar_amount, price=6850) # sell 500$ worth of bitcoin at 6850 (limit order)
-crypto_order = trader.crypto.buy('btc', quantity=1, price=6850)  sell 1 bitcoin at 6850 (limit order)
+crypto_order = trader.crypto.buy('btc', quantity=1, price=6850)     # sell 1 bitcoin at 6850 (limit order)
 
-# optionally you may do something like for sake of convienance: 
+# optionally you may do something like for the sake of convienance: 
 trader = trader.crypto 
 trader.buy('btc', dollar_amount)  
 trader.sell('btc', dollar_amount, price=6850)
 trader.buy('btc', quantity=1, price=6850)
-
 ```
 
 ### Trader methods 
@@ -90,8 +89,8 @@ trader.buy('btc', quantity=1, price=6850)
  - crypto_account()
  - orders()                         # returns order history 
  - order(order:Order)               # returns an updated order object from an existing Order 
- - portfolios()
- - dividends()
+ - portfolios()                     # not supported for 'crypto trader'
+ - dividends()                      # not supported for 'crypto trader' 
  ```
 #### Trading 
 ```python
