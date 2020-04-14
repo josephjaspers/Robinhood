@@ -128,6 +128,10 @@ class Trader:
         res = self.session.post(*args, timeout=timeout, **kwargs)
         if not res:
             print(res.text)
+
+            if 'data' in kwargs:
+                print('payload:', kwargs['data'])
+
             res.raise_for_status()
         return res.json() if asjson else res
 

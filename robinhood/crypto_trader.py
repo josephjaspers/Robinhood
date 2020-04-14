@@ -102,7 +102,7 @@ class CryptoTrader:
 		if not time_in_force: time_in_force = 'gtc'
 		if not price: price = self.quote(symbol).ask
 		if not quantity and price_quantity:
-			quantity = "{0:.8f}".format(price_quantity / price)
+			quantity = "{0:.6f}".format(price_quantity / price)
 
 		price = self._fprice(price)
 		account_id = self.account()['id']
