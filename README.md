@@ -68,14 +68,14 @@ trader.buy('btc', quantity=1, price=6850)
 ### Trader methods 
 
 #### Logging in and Sessions
-```
+```python
  - login(username: str = None, password: str = None)  # prompts for input if username and password are not supplied.
  - logout()
  - save_session(session_name: str)
  - load_session(session_name: str) @staticmethod 
 ```
 #### Stock Data
-```
+```python
  - instrument(symbol: str)
  - quote (symbol: str)
  - fundamentals(symbol: str)
@@ -84,7 +84,7 @@ trader.buy('btc', quantity=1, price=6850)
  - historical quotes(symbol: str)
 ```
 ##### Crypto Stock Data
-```
+```python
  - quote (symbol: str)
 ```
 
@@ -126,7 +126,7 @@ trader.buy('btc', quantity=1, price=6850)
        extended_hours = None)        # defaults to False if not suppplied 
 ```
 ##### Crypto Trading
-```
+```python
  - buy(  
        symbol: str,                   # the stock symbol
        price_quantity: float = None,  # buy a quantity of crypto of equal value to the given price_quantity,
