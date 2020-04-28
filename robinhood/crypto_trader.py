@@ -1,7 +1,7 @@
 from . import crypto_endpoints
 from .crypto_endpoints import crypto_pairs as _crypto_pairs
 from .order import CryptoOrder
-from .quote import CryptoQuote
+from .quote import CryptoQuote, HistoricalQuote
 import uuid
 from json import dumps
 
@@ -24,9 +24,23 @@ class CryptoTrader:
 		return self.trader._fprice
 
 	def quote(self, symbol):
-		crypto_symbol = symbol.upper()
-		url = str(crypto_endpoints.quotes(_crypto_pairs[crypto_symbol]))
-		return CryptoQuote(self._req_get(url))
+		json = self._req_get(crypto_endpoints.quotes(symbol))
+		return CryptoQuote(json)
+
+	def historical_quotes(self,
+						  symbol,
+						  interval='5minute',
+						  span='day',
+						  bounds='24_7',
+						  quotes_only=True):
+		assert (interval in ['5minute', '10minute', '30minute'])
+		assert (span in ['day', 'week'])
+
+		url = crypto_endpoints.historical_quotes(symbol, bounds, interval, span)
+		json = self._req_get(url)
+		if not json: return json
+		json['data_points'] = [HistoricalQuote(hq) for hq in json['data_points']]
+		return json['data_points'] if quotes_only else json
 
 	def account(self):
 		res = self._req_get(crypto_endpoints.accounts())
@@ -42,11 +56,11 @@ class CryptoTrader:
 		return CryptoOrder(self, json, False)
 
 	def buy(self,
-				   symbol,
-				   price_quantity=None,
-				   quantity=None,
-				   price=None,
-				   time_in_force=None):
+		    symbol,
+		    price_quantity=None,
+		    quantity=None,
+		    price=None,
+		    time_in_force=None):
 		"""
 		Args:
 			price_quantity: Buy an amount of bitcoin equal to this dollar amount

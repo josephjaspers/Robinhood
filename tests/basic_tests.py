@@ -62,10 +62,26 @@ class TestAll(TestCase):
 				'positions']
 
 		for str_func in funcs:
-			funciton = getattr(self.trader, str_func)
+			function = getattr(self.trader, str_func)
 
 	#  TODO -- add testing for buying or selling
 	#  Maybe only test limit orders to avoid execution?
+
+	def test_historical_data(self):
+		quotes = self.trader.historical_quotes('aapl')
+		assert(len(quotes) > 10)  # length will be in 100s
+
+		historical_quote = quotes[0]
+		# test properties
+		high = historical_quote.high
+		low = historical_quote.low
+		close = historical_quote.close
+		open = historical_quote.open
+		time = historical_quote.time
+
+		import pandas as pd
+		assert (isinstance(time, pd.Timestamp))
+		assert(low < high)
 
 
 if __name__ == '__main__':

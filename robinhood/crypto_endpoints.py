@@ -1,3 +1,4 @@
+from .detail.common import _make_query_string
 crypto_base_url = 'https://nummus.robinhood.com/'
 
 crypto_pairs = {
@@ -31,11 +32,23 @@ def accounts():
 
 def cancel_order(order_id):
 	"""POST ME"""
-	return f"https://nummus.robinhood.com/orders/{order_id}/cancel/"
+	return crypto_base_url + f"/orders/{order_id}/cancel/"
 
 
 def quotes(symbol):
-	return f'https://api.robinhood.com/marketdata/forex/quotes/{symbol}/'
+	crypto_id = crypto_pairs[symbol.upper()]
+	return f'https://api.robinhood.com/marketdata/forex/quotes/{crypto_id}/'
+
+
+def historical_quotes(symbol, bounds='24_7', interval='5minute', span='day'):
+	crypto_id = crypto_pairs[symbol.upper()]
+	url = f'https://api.robinhood.com/marketdata/forex/historicals/{crypto_id}/'
+	url += _make_query_string({
+		'bounds': bounds,
+		'interval': interval,
+		'span': span
+	})
+	return url
 
 
 def portfolios(account=None):

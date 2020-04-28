@@ -1,5 +1,5 @@
 from .order import Order
-from .quote import Quote
+from .quote import Quote, HistoricalQuote
 
 from six.moves.urllib.request import getproxies
 from six.moves import input
@@ -13,6 +13,8 @@ from . import endpoints
 from six.moves.urllib.parse import unquote
 from json import dumps
 from .crypto_trader import CryptoTrader
+
+from .detail.common import PrettyDict
 
 
 class Trader:
@@ -209,35 +211,21 @@ class Trader:
             _set_console_color('white')
             time.sleep(tick_duration)
 
-    def historical_quotes(self, symbol, interval, span, bounds='regular'):
-        """Fetch historical data for stock
-
-            Note: valid interval/span configs
-                interval = 5minute | 10minute + span = day, week
-                interval = day + span = year
-                interval = week
-
-            Args:
-                symbol (str): stock ticker
-                interval (str): resolution of data
-                span (str): length of data
-                bounds (:enum:`Bounds`, optional): 'extended' or 'regular' trading hours
-
-            Returns:
-                (:obj:`dict`) values returned from `historicals` endpoint
-        """
-        symbol = symbol if isinstance(symbol, list) else [symbol]
-        assert(bounds in ['immediate', 'regular'])
-
-        url = endpoints.historicals()
-        params = {
-            'symbols': ','.join(symbol).upper(),
-            'interval': interval,
-            'span': span,
-            'bounds': bounds
-        }
-        url += '?' + '&'.join([f'{k}={v}' for k,v in params.items() if v])
-        return self._req_get(url)['results'][0]
+    def historical_quotes(self,
+                          symbol,
+                          interval='5minute',
+                          span='day',
+                          bounds='trading',
+                          quotes_only=True):
+        """Fetch historical data for stock"""
+        assert(interval in ['5minute', '10minute', '30minute', 'hour'])
+        assert(span in ['day', 'week', 'all'])
+        assert(bounds in ['immediate', 'regular', 'trading'])
+        url = endpoints.historical_quotes(symbol, bounds, interval, span)
+        json = self._req_get(url)
+        if not json: return json
+        json['historicals'] = [HistoricalQuote(hq) for hq in json['historicals']]
+        return json['historicals'] if quotes_only else json
 
     ###########################################################################
     #                               Account Data

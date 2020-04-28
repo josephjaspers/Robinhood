@@ -1,3 +1,4 @@
+from .detail.common import _make_query_string
 api_url = "https://api.robinhood.com"
 
 
@@ -84,16 +85,18 @@ def quotes():
     return api_url + "/quotes/"
 
 
-# def marketdata_quotes(id):
-#     return api_url + f'/marketdata/quotes/{id}/'
-
-
 def orderbook(id):
     return api_url + f'/marketdata/pricebook/snapshots/{id}/'
 
 
-def historicals():
-    return api_url + "/quotes/historicals/"
+def historical_quotes(symbol, bounds='trading', interval='5minute', span='day'):
+    url = api_url + f'/marketdata/historicals/{symbol.upper()}/'
+    url += _make_query_string({
+        'bounds': bounds,
+        'interval': interval,
+        'span': span
+    })
+    return url
 
 
 def document_requests():

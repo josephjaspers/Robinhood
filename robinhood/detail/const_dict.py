@@ -1,6 +1,5 @@
 import pprint
 
-
 class ConstDict:
 	def __init__(self, dictionary: dict):
 		self._dict = dictionary

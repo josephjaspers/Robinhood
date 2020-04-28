@@ -6,8 +6,8 @@ import pandas as pd
 
 class QuoteBase(ConstDict):
 
-	def __init__(self, quote):
-		quote['time'] = timestamp_now()
+	def __init__(self, quote, time=None):
+		quote['time'] = time if time else timestamp_now()
 		ConstDict.__init__(self, quote)
 
 	def _get(self, key):
@@ -121,3 +121,42 @@ class CryptoQuote(QuoteBase):
 	@property
 	def open(self) -> float:
 		return self._get_float('open_price')
+
+
+class HistoricalQuote(QuoteBase):
+	"""
+	Example json historical quote:
+	{
+		'begins_at': '2020-04-28T13:00:00Z',
+		'open_price': '285.150000',
+		'close_price': '285.130000',
+		'high_price': '285.300100',
+		'low_price': '285.130000',
+		'volume': 3006,
+		'session': 'pre',
+		'interpolated': False}
+
+	Note: historical quotes are the same for crypto/regular quotes
+	"""
+	def __init__(self, quote: dict):
+		QuoteBase.__init__(self, quote, pd.Timestamp(quote['begins_at']))
+
+	@property
+	def low(self):
+		return self._get_float('low_price')
+
+	@property
+	def high(self):
+		return self._get_float('high_price')
+
+	@property
+	def open(self):
+		return self._get_float('open_price')
+
+	@property
+	def close(self):
+		return self._get_float('close_price')
+
+	@property
+	def volume(self):
+		return self._get_float('volume')
