@@ -68,30 +68,41 @@ trader.buy('btc', quantity=1, price=6850)
 ### Trader methods 
 
 #### Logging in and Sessions
-```
- - login(username: str = one.buy, password: str = None)
+```python
+ - login(username: str = None, password: str = None)  # prompts for input if username and password are not supplied.
  - logout()
  - save_session(session_name: str)
  - load_session(session_name: str) @staticmethod 
 ```
 #### Stock Data
-```
- - fundamentals(symbol: str)
+```python
  - instrument(symbol: str)
- - quote (symbol: str)           # works for both crypto and regular stocks 
+ - quote (symbol: str)
+ - fundamentals(symbol: str)
  - orderbook(symbol: str)        # requires robinhood gold
  - watch_orderbook(symbol: str)  # actively watch the orderbook (pretty format)
  - historical quotes(symbol: str)
 ```
+##### Crypto Stock Data
+```python
+ - quote (symbol: str)
+```
+
 #### Account Data 
 ```python
  - account()
- - crypto_account()
  - orders()                         # returns order history 
  - order(order:Order)               # returns an updated order object from an existing Order 
  - portfolios()                     # not supported for 'crypto trader'
  - dividends()                      # not supported for 'crypto trader' 
  ```
+##### Crypto Account Data
+```python
+ - account()
+ - orders()                        
+ - order(order:CryptoOrder)
+```
+
 #### Trading 
 ```python
  - buy(  
@@ -113,9 +124,9 @@ trader.buy('btc', quantity=1, price=6850)
        trailing_stop_amount = None,  # trailing stop price order 
        time_in_force = None,         # defaults to gfd (good for day)
        extended_hours = None)        # defaults to False if not suppplied 
-
-# Crypto buy/sell
-
+```
+##### Crypto Trading
+```python
  - buy(  
        symbol: str,                   # the stock symbol
        price_quantity: float = None,  # buy a quantity of crypto of equal value to the given price_quantity,
@@ -132,7 +143,7 @@ trader.buy('btc', quantity=1, price=6850)
        
  - cancel(order: Order/CryptoOrder)   # cancels an existing order, returns response object, success does not ensure the order has been canceled). (Robinhood response does not indicate if the order was successfully canceled) 
  ```
- - for buy_crypto/sell_crypto: 'price_quantity' is mutually exclusive with quantity. 
+ - for crypto buy/sell: 'price_quantity' is mutually exclusive with quantity. 
  - trailing_stop_percent, trailing_stop_amount, and stop_price are mutually exclusive arguments. 
  - supplying `price` and `stop` argument will create a `stop-limit` order. 
  - `trailing_stop_percent`, and `trailing_stop_amount` are not compatible with `price` (RH does not support trailing-limit orders) 
@@ -143,7 +154,7 @@ trader.buy('btc', quantity=1, price=6850)
 
  - The quote object wraps a robinhood quote json and supplies convenience functionality to it. 
  - to access the underlying json use `._dict`
- - Each property will on-the-fly convert to the apropriate type, 
+ - Each property will on-the-fly convert to the appropriate type, 
    this ensures that access to the original value is always available, (in case float conversion causes a loss of precision) 
 
 #### Regular Quote 
@@ -162,6 +173,7 @@ trader.buy('btc', quantity=1, price=6850)
 ```python
  - ask  -> float
  - bid  -> float
+ - mark -> float
  - high -> float
  - low  -> float
  - open -> float 
@@ -179,6 +191,7 @@ trader.buy('btc', quantity=1, price=6850)
  - filled  (update: bool = True) -> bool # returns if the order has been filled, if update is true, will call update prior.
  - canceled(update: bool = True) -> bool # returns if the order has been canceled, if update is true, will call update prior.
  - status  (update: bool = True) -> str  # returns the current status of the order
+ - is_open (update: bool = True) -> bool # returns True if the order is not canceled or filled
 ```
 ##### Properties 
 ```python
