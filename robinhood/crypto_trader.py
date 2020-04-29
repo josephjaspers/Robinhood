@@ -4,7 +4,7 @@ from .order import CryptoOrder
 from .quote import CryptoQuote, HistoricalQuote
 import uuid
 from json import dumps
-
+import pandas as pd
 
 class CryptoTrader:
 
@@ -29,18 +29,21 @@ class CryptoTrader:
 
 	def historical_quotes(self,
 						  symbol,
-						  interval='5minute',
-						  span='day',
-						  bounds='24_7',
-						  quotes_only=True):
-		assert (interval in ['5minute', '10minute', '30minute'])
-		assert (span in ['day', 'week'])
-
-		url = crypto_endpoints.historical_quotes(symbol, bounds, interval, span)
-		json = self._req_get(url)
-		if not json: return json
-		json['data_points'] = [HistoricalQuote(hq) for hq in json['data_points']]
-		return json['data_points'] if quotes_only else json
+						  interval,
+						  span=None,
+						  start=None,
+						  stop=None,
+						  bounds='24_7'):
+		return self.trader.historical_quotes(
+			symbol=symbol,
+			interval=interval,
+			span=span,
+			start=start,
+			stop=stop,
+			bounds=bounds,
+			_json_key='data_points',
+			_endpoint=crypto_endpoints
+		)
 
 	def account(self):
 		res = self._req_get(crypto_endpoints.accounts())

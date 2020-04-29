@@ -124,6 +124,8 @@ class CryptoQuote(QuoteBase):
 
 
 class HistoricalQuote(QuoteBase):
+	float_columns = ['open_price', 'close_price', 'high_price', 'low_price', 'volume']
+
 	"""
 	Example json historical quote:
 	{

@@ -1,6 +1,7 @@
 import pandas as pd
 import pprint
-
+from datetime import datetime
+from dateutil import parser
 
 class PrettyDict:
 	def __init__(self, dict):
@@ -32,3 +33,22 @@ def _make_query_string(json: dict):
 		return ''
 	else:
 		return '?' + '&'.join(f'{k}={v}' for k, v in json.items() if v)
+
+
+def _datelike_to_datetime(date: [int, str, datetime], default=None):
+	if not date:
+		return default
+
+	if isinstance(date, datetime):
+		return date
+
+	if isinstance(date, int):
+		date = str(date)
+
+	if isinstance(date, str):
+		if date.isnumeric() and len(date) == len('yyyymmdd'):
+			return datetime.strptime(str(date), '%Y%m%d')
+		else:
+			return parser.parse(date)
+
+	raise Exception("Unable to detect format of : " + str(date))

@@ -14,8 +14,7 @@ from six.moves.urllib.parse import unquote
 from json import dumps
 from .crypto_trader import CryptoTrader
 
-from .detail.common import PrettyDict
-
+from .detail.common import _datelike_to_datetime
 
 class Trader:
 
@@ -82,7 +81,9 @@ class Trader:
             payload['challenge_type'] = 'sms'
 
         res = self.session.post(endpoints.login(), data=payload, timeout=self.request_timeout, verify=True)
-        res.raise_for_status()
+        if not res:
+            print(res.text)
+            res.raise_for_status()
         data = res.json()
 
         if 'mfa_required' in data.keys():
@@ -116,7 +117,10 @@ class Trader:
 
     def _req_get(self, *args, timeout=15, asjson=True, **kwargs):
         res = self.session.get(*args, timeout=timeout, **kwargs)
-        res.raise_for_status()
+
+        if not res:
+            print(res.text)
+            res.raise_for_status()
         return res.json() if asjson else res
 
     def _req_post(self, *args, timeout=15, asjson=True, **kwargs):
@@ -130,7 +134,6 @@ class Trader:
         res = self.session.post(*args, timeout=timeout, **kwargs)
         if not res:
             print(res.text)
-
             if 'data' in kwargs:
                 print('payload:', kwargs['data'])
 
@@ -213,20 +216,44 @@ class Trader:
 
     def historical_quotes(self,
                           symbol,
-                          interval='5minute',
-                          span='day',
-                          bounds='trading',
-                          quotes_only=True):
+                          interval,
+                          span=None,
+                          start=None,
+                          stop=None,
+                          bounds=None,
+                          _json_key='historicals',
+                          _endpoint=endpoints):
         """Fetch historical data for stock"""
-        assert(interval in ['5minute', '10minute', '30minute', 'hour'])
-        assert(span in ['day', 'week', 'all'])
-        assert(bounds in ['immediate', 'regular', 'trading'])
-        url = endpoints.historical_quotes(symbol, bounds, interval, span)
+
+        if start: start = _datelike_to_datetime(start).strftime('%Y-%m-%dT%H:%M:%SZ')
+        if stop:  stop = _datelike_to_datetime(stop).strftime('%Y-%m-%dT%H:%M:%SZ')
+        if stop: assert start
+        if start:
+            if not span: span = 'all'
+            assert (span == 'all')
+
+        url = _endpoint.historical_quotes(
+            symbol=symbol,
+            bounds=bounds,
+            interval=interval,
+            span=span,
+            start=start,
+            stop=stop)
         json = self._req_get(url)
         if not json: return json
-        json['historicals'] = [HistoricalQuote(hq) for hq in json['historicals']]
-        return json['historicals'] if quotes_only else json
 
+        import pandas as pd
+        df = pd.DataFrame(json[_json_key])
+
+        keymap = {k:k.replace('_price', '') for k in df.keys()}
+        df.rename(columns=keymap, inplace=True)
+        df.index = [pd.Timestamp(time) for time in df.begins_at.values]
+
+        float_columns = ['open', 'close', 'high', 'low']
+        for fc in float_columns:
+            df[fc] = df[fc].astype(float)
+
+        return df
     ###########################################################################
     #                               Account Data
     ###########################################################################

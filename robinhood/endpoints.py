@@ -89,13 +89,9 @@ def orderbook(id):
     return api_url + f'/marketdata/pricebook/snapshots/{id}/'
 
 
-def historical_quotes(symbol, bounds='trading', interval='5minute', span='day'):
+def historical_quotes(symbol, **kwargs):
     url = api_url + f'/marketdata/historicals/{symbol.upper()}/'
-    url += _make_query_string({
-        'bounds': bounds,
-        'interval': interval,
-        'span': span
-    })
+    url += _make_query_string(kwargs)
     return url
 
 
