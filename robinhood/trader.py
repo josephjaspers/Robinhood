@@ -214,9 +214,12 @@ class Trader:
             _set_console_color('white')
             time.sleep(tick_duration)
 
+    __valid_spans = ['hour', 'day', 'week', 'month', '3month', 'year', '5year', 'all']
+    __valid_intervals = ['15second', '5minute', '10minute', 'hour', 'day', 'week']
+
     def historical_quotes(self,
                           symbol,
-                          interval,
+                          interval=None,
                           span=None,
                           start=None,
                           stop=None,
@@ -231,6 +234,14 @@ class Trader:
         if start:
             if not span: span = 'all'
             assert (span == 'all')
+
+        if interval not in self.__valid_intervals:
+            msg = "Invalid argument `interval` must be one of " + str(self.__valid_intervals)
+            raise Exception(msg)
+
+        if span not in self.__valid_spans:
+            msg = "Invalid argument `span` must be one of " + str(self.__valid_spans)
+            raise Exception(msg)
 
         url = _endpoint.historical_quotes(
             symbol=symbol,

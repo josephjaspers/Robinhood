@@ -1,7 +1,7 @@
 from .detail.const_dict import ConstDict
 from .detail.common import timestamp_now, _to_float
 from datetime import datetime
-
+from .common.ticker import Ticker
 
 class OrderBase(ConstDict):
 	def __init__(self, order: dict, init_local_time=True):
@@ -39,6 +39,8 @@ class Order(OrderBase):
 	def __init__(self, trader, order: dict, init_local_time=True):
 		OrderBase.__init__(self, order, init_local_time)
 		self._trader = trader
+		self.__trailing_stoploss_max_price = self.price #not always used
+		self.__trailing_stoploss_percent = None
 
 	def update(self):
 		"""Update this order's information by pinging robinhood"""
@@ -86,6 +88,37 @@ class Order(OrderBase):
 	def quantity(self) -> int:
 		return self._dict['quantity']
 
+	def add_stop_loss(self, percent, poll_rate_seconds=60):
+		from threading import Thread
+		if (self.side != 'buy'):
+			raise Exception("add_stop_loss must be called on a buy-order")
+
+		thread = Thread(target=self._poll_for_stoploss, args=[percent, poll_rate_seconds])
+		setattr(self, '__max_price_since_order', self.price)
+		thread.run()
+
+	def _poll_for_stoploss(self, percent, poll_rate_seconds):
+
+		def __sell_off():
+			self._trader.sell(self.symbol, quantity=self.quantity)
+
+		ticker = Ticker(poll_rate_seconds)
+		relative_percent = 1 - percent
+
+		while True:
+			if ticker.tick():
+				self.update()
+				if self.filled():
+					quote = self._trader.quote(self.symbol)
+					price = quote.price
+					if self.__trailing_stoploss_max_price < price:
+						self.__trailing_stoploss_max_price = price
+					elif price < self.__stoploss_max_price * relative_percent:
+						__sell_off()
+						return
+
+				if self.canceled():
+					return
 
 class CryptoOrder(Order):
 	"""
@@ -115,7 +148,7 @@ class CryptoOrder(Order):
 	def update(self):
 		# TODO- can we find a way to query a single crypto-order?
 		order_id = self._dict['id']
-		orders = self._trader.crypto_orders()
+		orders = self._trader.orders()
 		crypto_order = next(order for order in orders if order['id'] == order_id)
 		update_dict = crypto_order._dict
 		if self.time:
